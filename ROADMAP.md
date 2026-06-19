@@ -6,126 +6,126 @@ true
 4:09
 React Native Tutorial - 1 - Introduction
 Codevolution
-
+✅
 2
 true
 2:46
 React Native Tutorial - 2 - Expo vs React Native
-Codevolution
+Codevolution ✅
 
 3
 true
 5:52
 React Native Tutorial - 3 - Hello World
-Codevolution
-
+Codevolution ✅
+  
 4
 true
 2:15
 React Native Tutorial - 4 - Running App on Device
-Codevolution
+Codevolution ✅
 
 5
 true
 2:07
 React Native Tutorial - 5 - Running App on iPhone Simulator
-Codevolution
+Codevolution ✅
 
 6
 true
 4:08
 React Native Tutorial - 6 - Running App on Android Emulator
-Codevolution
+Codevolution ✅
 
 7
 true
 2:49
 React Native Tutorial - 7 - Core Components
-Codevolution
+Codevolution ✅
 
 8
 true
 6:51
 React Native Tutorial - 8 - View
-Codevolution
+Codevolution ✅
 
 9
 true
 3:34
 React Native Tutorial - 9 - Text
-Codevolution
+Codevolution ✅
 
 10
 true
 5:51
 React Native Tutorial - 10 - Image
-Codevolution
+Codevolution ✅
 
 11
 true
 3:37
 React Native Tutorial - 11 - Scroll View
-Codevolution
+Codevolution ✅
 
 12
 true
 4:00
 React Native Tutorial - 12 - Button
-Codevolution
+Codevolution ✅
 
 13
 true
 4:18
 React Native Tutorial - 13 - Pressable
-Codevolution
+Codevolution ✅
 
 14
 true
 6:40
 React Native Tutorial - 14 - Modal
-Codevolution
+Codevolution ✅
 
 15
 true
 3:22
 React Native Tutorial - 15 - Status Bar
-Codevolution
+Codevolution ✅
 
 16
 true
 3:11
 React Native Tutorial - 16 - Activity Indicator
-Codevolution
+Codevolution ✅
 
 17
 true
 4:19
 React Native Tutorial - 17 - Alert
-Codevolution
+Codevolution ✅
 
 18
 true
 3:07
 React Native Tutorial - 18 - Custom Components
-Codevolution
+Codevolution ✅
 
 19
 true
 1:45
 React Native Tutorials - 19 - Styling
-Codevolution
+Codevolution ✅
 
 20
 true
 5:56
 React Native Tutorial - 20 - StyleSheet API
-Codevolution
+Codevolution ✅
 
 21
 true
 5:13
 React Native Tutorials - 21 - Multiple Styles
-Codevolution
+Codevolution ✅
 
 22
 true
