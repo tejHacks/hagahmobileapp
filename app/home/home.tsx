@@ -1,15 +1,18 @@
 import React, { useState } from "react";
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Share,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import Navbar from "../../components/ui/Navbar";
 import TopBar from "../../components/ui/TopBar";
 import { declarations } from "../../data/declarations";
-
-import * as Clipboard from "expo-clipboard";
-
-const { width } = Dimensions.get("window");
 
 function getDailyDeclaration() {
   const start = new Date("2025-01-01").getTime();
@@ -20,8 +23,32 @@ function getDailyDeclaration() {
 
 export default function HomeScreen() {
   const daily = getDailyDeclaration();
-  const [meditateCount, setMeditateCount] = useState(0);
-  const done = meditateCount >= 5;
+  const [copiedScripture, setCopiedScripture] = useState(false);
+  const [copiedDeclaration, setCopiedDeclaration] = useState(false);
+
+  const handleCopyScripture = async () => {
+    const text = `${daily.ref}\n\n"${daily.scripture}"`;
+    await Clipboard.setStringAsync(text);
+    setCopiedScripture(true);
+    setTimeout(() => setCopiedScripture(false), 2500);
+  };
+
+  const handleShareScripture = async () => {
+    const text = `✦ HAGAH — Scripture\n\n${daily.ref}\n\n"${daily.scripture}"\n\n— Hagah App`;
+    await Share.share({ message: text });
+  };
+
+  const handleCopyDeclaration = async () => {
+    const text = `${daily.ref}\n\n${daily.declaration}`;
+    await Clipboard.setStringAsync(text);
+    setCopiedDeclaration(true);
+    setTimeout(() => setCopiedDeclaration(false), 2500);
+  };
+
+  const handleShareDeclaration = async () => {
+    const text = `✦ HAGAH — Today's Declaration\n\n${daily.ref}\n\n${daily.declaration}\n\n— Hagah App`;
+    await Share.share({ message: text });
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={["left", "right"]}>
@@ -34,41 +61,80 @@ export default function HomeScreen() {
         <View style={styles.scriptureBand}>
           <Text style={styles.scriptureRef}>{daily.ref}</Text>
           <Text style={styles.scriptureText}>"{daily.scripture}"</Text>
+
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
+                copiedScripture && styles.actionBtnActive,
+              ]}
+              onPress={handleCopyScripture}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={copiedScripture ? "checkmark" : "copy-outline"}
+                size={14}
+                color={copiedScripture ? "#1a0f00" : "#c9923a"}
+              />
+              <Text
+                style={[
+                  styles.actionBtnText,
+                  copiedScripture && styles.actionBtnTextActive,
+                ]}
+              >
+                {copiedScripture ? "Copied!" : "Copy"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={handleShareScripture}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="share-outline" size={14} color="#c9923a" />
+              <Text style={styles.actionBtnText}>Share</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Declaration Card */}
         <View style={styles.declarationCard}>
           <Text style={styles.declLabel}>TODAY'S DECLARATION</Text>
           <Text style={styles.declText}>{daily.declaration}</Text>
-        </View>
 
-        {/* Meditate Tracker */}
-        <View style={styles.meditateCard}>
-          <Text style={styles.meditateLabel}>MEDITATE ON IT 5×</Text>
-          <View style={styles.dotRow}>
-            {[0, 1, 2, 3, 4].map((i) => (
-              <TouchableOpacity
-                key={i}
-                onPress={() => setMeditateCount(i + 1)}
-                style={[styles.dot, i < meditateCount && styles.dotFilled]}
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
+                copiedDeclaration && styles.actionBtnActive,
+              ]}
+              onPress={handleCopyDeclaration}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={copiedDeclaration ? "checkmark" : "copy-outline"}
+                size={14}
+                color={copiedDeclaration ? "#1a0f00" : "#c9923a"}
               />
-            ))}
+              <Text
+                style={[
+                  styles.actionBtnText,
+                  copiedDeclaration && styles.actionBtnTextActive,
+                ]}
+              >
+                {copiedDeclaration ? "Copied!" : "Copy"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={handleShareDeclaration}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="share-outline" size={14} color="#c9923a" />
+              <Text style={styles.actionBtnText}>Share</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[styles.meditateBtn, done && styles.meditateBtnDone]}
-            onPress={() => !done && setMeditateCount((c) => c + 1)}
-            activeOpacity={0.85}
-            disabled={done}
-          >
-            <Text style={[styles.meditateBtnText, done && styles.meditateBtnTextDone]}>
-              {done ? "✓ Meditation Complete" : `Declare It Aloud (${meditateCount}/5)`}
-            </Text>
-          </TouchableOpacity>
-          {done && (
-            <Text style={styles.completeMsg}>
-              🔥 Well done! Come back tomorrow for a new declaration.
-            </Text>
-          )}
         </View>
 
         <View style={{ height: 100 }} />
@@ -81,39 +147,43 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#1a0f00" },
   scroll: { paddingHorizontal: 20, paddingTop: 16, gap: 14 },
+
   scriptureBand: {
     backgroundColor: "#2d1800",
     borderRadius: 10,
     padding: 16,
+    marginTop: 6,
     borderWidth: 0.5,
     borderColor: "rgba(201, 146, 58, 0.2)",
+    gap: 12,
   },
   scriptureRef: {
     fontSize: 11,
     color: "#c9923a",
     letterSpacing: 2,
     textTransform: "uppercase",
-    marginBottom: 8,
     fontWeight: "700",
   },
   scriptureText: {
-    fontSize: 13,
-    color: "rgba(201, 146, 58, 0.6)",
+    fontSize: 15,
+    color: "rgba(201, 146, 58, 0.75)",
     fontStyle: "italic",
-    lineHeight: 20,
+    lineHeight: 24,
   },
+
   declarationCard: {
     backgroundColor: "#120900",
     borderRadius: 12,
     padding: 20,
+    marginTop: 16,
     borderWidth: 0.5,
     borderColor: "rgba(201, 146, 58, 0.15)",
+    gap: 12,
   },
   declLabel: {
     fontSize: 10,
     color: "rgba(201, 146, 58, 0.5)",
     letterSpacing: 2,
-    marginBottom: 12,
   },
   declText: {
     fontSize: 17,
@@ -121,60 +191,32 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     fontWeight: "400",
   },
-  meditateCard: {
-    backgroundColor: "#2d1800",
-    borderRadius: 12,
-    padding: 20,
+
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  actionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(201, 146, 58, 0.08)",
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
     borderWidth: 0.5,
     borderColor: "rgba(201, 146, 58, 0.2)",
-    alignItems: "center",
   },
-  meditateLabel: {
-    fontSize: 10,
-    color: "#c9923a",
-    letterSpacing: 2,
-    marginBottom: 16,
-  },
-  dotRow: {
-    flexDirection: "row",
-    gap: 14,
-    marginBottom: 16,
-  },
-  dot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: "rgba(201, 146, 58, 0.35)",
-    backgroundColor: "transparent",
-  },
-  dotFilled: {
+  actionBtnActive: {
     backgroundColor: "#c9923a",
     borderColor: "#c9923a",
   },
-  meditateBtn: {
-    width: "100%",
-    backgroundColor: "#c9923a",
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  meditateBtnDone: {
-    backgroundColor: "transparent",
-    borderWidth: 0.5,
-    borderColor: "#c9923a",
-  },
-  meditateBtnText: {
-    color: "#1a0f00",
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 1,
-  },
-  meditateBtnTextDone: { color: "#c9923a" },
-  completeMsg: {
-    marginTop: 12,
+  actionBtnText: {
     fontSize: 12,
     color: "#c9923a",
-    textAlign: "center",
+    fontWeight: "600",
+  },
+  actionBtnTextActive: {
+    color: "#1a0f00",
   },
 });

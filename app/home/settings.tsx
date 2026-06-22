@@ -8,18 +8,17 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
-  Share,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import * as Clipboard from "expo-clipboard";
 import Navbar from "../../components/ui/Navbar";
 import {
   requestNotificationPermission,
   scheduleDeclarationsForTimes,
   cancelAllDeclarations,
   getScheduledNotifications,
+  // sendTestNotificationIn10Seconds, // dev test only — re-enable if you need to verify delivery again
   AVAILABLE_TIMES,
 } from "../../utils/notifications";
 import { declarations } from "../../data/declarations";
@@ -46,7 +45,9 @@ export default function SettingsScreen() {
   const [notificationsOn, setNotificationsOn] = useState(false);
   const [selectedHours, setSelectedHours] = useState<number[]>([6]);
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  // const [testVisible, setTestVisible] = useState(true); // dev test only
+  // const [testSending, setTestSending] = useState(false); // dev test only
+  // const [testSent, setTestSent] = useState(false); // dev test only
   const daily = getDailyDeclaration();
 
   useEffect(() => {
@@ -112,17 +113,23 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleCopy = async () => {
-    const text = `${daily.ref}\n\n"${daily.scripture}"\n\n${daily.declaration}`;
-    await Clipboard.setStringAsync(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  };
+  /* const handleTestNotification = async () => {
+    setTestSending(true);
+    const id = await sendTestNotificationIn10Seconds();
+    setTestSending(false);
 
-  const handleShare = async () => {
-    const text = `✦ HAGAH — Daily Declaration\n\n${daily.ref}\n\n"${daily.scripture}"\n\n${daily.declaration}\n\n— Hagah App`;
-    await Share.share({ message: text });
-  };
+    if (!id) {
+      Alert.alert(
+        "Permission Required",
+        "Please allow notifications in your device settings to run the test.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    setTestSent(true);
+    setTimeout(() => setTestSent(false), 4000);
+  }; */
 
   const activeLabels = AVAILABLE_TIMES.filter((t) =>
     selectedHours.includes(t.hour)
@@ -154,36 +161,6 @@ export default function SettingsScreen() {
           <Text style={styles.declText} numberOfLines={3}>
             {daily.declaration}
           </Text>
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={[styles.actionBtn, copied && styles.actionBtnActive]}
-              onPress={handleCopy}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={copied ? "checkmark" : "copy-outline"}
-                size={15}
-                color={copied ? "#1a0f00" : "#c9923a"}
-              />
-              <Text
-                style={[
-                  styles.actionBtnText,
-                  copied && styles.actionBtnTextActive,
-                ]}
-              >
-                {copied ? "Copied!" : "Copy"}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={handleShare}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="share-outline" size={15} color="#c9923a" />
-              <Text style={styles.actionBtnText}>Share</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* Notifications */}
@@ -283,13 +260,61 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Test notification — dev tool, commented out after confirming delivery works
+        {testVisible && (
+          <>
+            <Text style={styles.sectionLabel}>TEST NOTIFICATION</Text>
+            <View style={styles.card}>
+              <View style={styles.testHeader}>
+                <View style={styles.rowLeft}>
+                  <Ionicons name="notifications" size={18} color="#c9923a" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rowTitle}>Send Test (10s)</Text>
+                    <Text style={styles.rowSub}>
+                      Fires the real daily message in 10 seconds
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setTestVisible(false)}
+                  activeOpacity={0.7}
+                  style={styles.hideBtn}
+                >
+                  <Ionicons name="close" size={16} color="#5a3e1b" />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.testBtn, testSent && styles.testBtnSent]}
+                onPress={handleTestNotification}
+                activeOpacity={0.85}
+                disabled={testSending}
+              >
+                <Ionicons
+                  name={testSent ? "checkmark" : "notifications-outline"}
+                  size={15}
+                  color="#1a0f00"
+                />
+                <Text style={styles.testBtnText}>
+                  {testSending
+                    ? "Scheduling..."
+                    : testSent
+                    ? "Sent! Check in ~10s"
+                    : "Send Test Notification"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+        */}
+
         {/* App info */}
         <Text style={styles.sectionLabel}>APP</Text>
         <View style={styles.card}>
           {[
             { key: "App Name", val: "Hagah" },
             { key: "Version", val: "1.0.0" },
-            { key: "Declarations", val: "20 (more coming)" },
+            { key: "Declarations", val: "English KJV Bible Inspired" },
             { key: "Built with", val: "Faith & React Native" },
           ].map((item, i, arr) => (
             <React.Fragment key={item.key}>
@@ -379,33 +404,6 @@ const styles = StyleSheet.create({
     color: "rgba(245, 212, 154, 0.7)",
     lineHeight: 20,
     fontStyle: "italic",
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  actionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(201, 146, 58, 0.08)",
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderWidth: 0.5,
-    borderColor: "rgba(201, 146, 58, 0.2)",
-  },
-  actionBtnActive: {
-    backgroundColor: "#c9923a",
-    borderColor: "#c9923a",
-  },
-  actionBtnText: {
-    fontSize: 12,
-    color: "#c9923a",
-    fontWeight: "600",
-  },
-  actionBtnTextActive: {
-    color: "#1a0f00",
   },
   row: {
     flexDirection: "row",
@@ -506,6 +504,39 @@ const styles = StyleSheet.create({
   },
   summaryBold: {
     color: "#c9923a",
+    fontWeight: "700",
+  },
+  testHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  hideBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#1a0f00",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 0.5,
+    borderColor: "rgba(201, 146, 58, 0.15)",
+  },
+  testBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#c9923a",
+    borderRadius: 8,
+    paddingVertical: 12,
+  },
+  testBtnSent: {
+    backgroundColor: "#f5d49a",
+  },
+  testBtnText: {
+    fontSize: 13,
+    color: "#1a0f00",
     fontWeight: "700",
   },
   infoRow: {

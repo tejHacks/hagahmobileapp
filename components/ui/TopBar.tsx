@@ -11,7 +11,7 @@ export default function TopBar() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 4 }]}>
+    <View style={[styles.container, { paddingTop: insets.top + 6 }]}>
       <View style={styles.row}>
         <View style={styles.titleGroup}>
           <Text style={styles.logo}>✦ HAGAH</Text>
@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#120900",
     borderBottomWidth: 1,
     borderBottomColor: "rgba(201, 146, 58, 0.15)",
-    paddingBottom: 10,
+    paddingBottom: 16,
     paddingHorizontal: 20,
   },
   row: {

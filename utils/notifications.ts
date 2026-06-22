@@ -19,6 +19,16 @@ export const AVAILABLE_TIMES = [
 
 export type TimeSlot = (typeof AVAILABLE_TIMES)[number];
 
+// Shared across the daily schedule and the test notification,
+// so the test fires the exact same kind of message a real one would.
+export const DECLARATION_MESSAGES = [
+  "Open Hagah and speak the Word over your day. הגה",
+  "Your midday declaration is ready. Rise and declare! הגה",
+  "Speak the Word. It is working for you right now. הגה",
+  "Your afternoon declaration awaits. Don't let it pass. הגה",
+  "End your day with the Word on your lips. הגה",
+];
+
 export async function requestNotificationPermission(): Promise<boolean> {
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("hagah-declarations", {
@@ -28,10 +38,8 @@ export async function requestNotificationPermission(): Promise<boolean> {
       vibrationPattern: [0, 250, 250, 250],
     });
   }
-
   const { status: existing } = await Notifications.getPermissionsAsync();
   if (existing === "granted") return true;
-
   const { status } = await Notifications.requestPermissionsAsync();
   return status === "granted";
 }
@@ -42,26 +50,13 @@ export async function scheduleDeclarationsForTimes(
   try {
     const granted = await requestNotificationPermission();
     if (!granted) return [];
-
     await cancelAllDeclarations();
-
-    const messages = [
-      "Open Hagah and speak the Word over your day. הגה",
-      "Your midday declaration is ready. Rise and declare! הגה",
-      "Speak the Word. It is working for you right now. הגה",
-      "Your afternoon declaration awaits. Don't let it pass. הגה",
-      "End your day with the Word on your lips. הגה",
-    ];
-
     const ids: string[] = [];
-
     for (const hour of selectedHours) {
       const timeSlot = AVAILABLE_TIMES.find((t) => t.hour === hour);
       if (!timeSlot) continue;
-
       const msgIndex = AVAILABLE_TIMES.indexOf(timeSlot);
-      const body = messages[msgIndex] ?? messages[0];
-
+      const body = DECLARATION_MESSAGES[msgIndex] ?? DECLARATION_MESSAGES[0];
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: "✦ Time to Hagah",
@@ -75,16 +70,47 @@ export async function scheduleDeclarationsForTimes(
           minute: timeSlot.minute,
         },
       });
-
       ids.push(id);
     }
-
     return ids;
   } catch (e) {
     console.error("Failed to schedule notifications:", e);
     return [];
   }
 }
+
+/* Fires the same kind of notification the daily schedule sends,
+but 10 seconds from now — for testing delivery on a real device/build.
+Confirmed working — commented out, uncomment if you need to re-test delivery.
+
+export async function sendTestNotificationIn10Seconds(): Promise<
+  string | null
+> {
+  try {
+    const granted = await requestNotificationPermission();
+    if (!granted) return null;
+
+    const body = DECLARATION_MESSAGES[0];
+
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "✦ Time to Hagah",
+        body,
+        sound: true,
+        data: { test: true },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 10,
+      },
+    });
+    return id;
+  } catch (e) {
+    console.error("Failed to send test notification:", e);
+    return null;
+  }
+}
+*/
 
 export async function cancelAllDeclarations(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
