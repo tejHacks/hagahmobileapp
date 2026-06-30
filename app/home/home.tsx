@@ -17,9 +17,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Navbar from "../../components/ui/Navbar";
-import TopBar from "../../components/ui/TopBar";
 import { declarations } from "../../data/declarations";
-import { getBookmarks, isBookmarked, toggleBookmark, type Bookmark } from "../../utils/bookmarks";
+import { isBookmarked, toggleBookmark } from "../../utils/bookmarks";
 
 const TOTAL_READS = 5;
 const SOUND_FILES = [
@@ -39,30 +38,32 @@ function getDailyDeclaration(dayOffset = 0) {
   return declarations[dayIndex % declarations.length];
 }
 
+// "previous" moves backward in real time only — dayOffset is always >= 0
+function getDisplayDate(dayOffset: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - dayOffset);
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+}
+
 export default function HomeScreen() {
   const [displayDayOffset, setDisplayDayOffset] = useState(0);
   const daily = useMemo(() => getDailyDeclaration(displayDayOffset), [displayDayOffset]);
+  const dateLabel = useMemo(() => getDisplayDate(displayDayOffset), [displayDayOffset]);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentRead, setCurrentRead] = useState(0);
   const [copied, setCopied] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
-  const [savedBookmarks, setSavedBookmarks] = useState<Bookmark[]>([]);
   const [showSounds, setShowSounds] = useState(false);
   const [activeSound, setActiveSound] = useState<number | null>(null);
   const [soundPlaying, setSoundPlaying] = useState(false);
-  const [soundLoading, setSoundLoading] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
   const pulse = useRef(new Animated.Value(1)).current;
   const musicPulse = useRef(new Animated.Value(1)).current;
 
   const fullSpeechText = `${daily.ref}. ${daily.scripture}. Today's declaration. ${daily.declaration}`;
-
   const combinedText = `${daily.ref}\n"${daily.scripture}"\n\nToday's Declaration:\n${daily.declaration}`;
 
-  // Best-effort background audio session — lets TTS keep speaking
-  // when the screen locks or you switch apps (iOS handles this well,
-  // Android may still cut it after extended background time).
   useEffect(() => {
     (async () => {
       try {
@@ -82,14 +83,11 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    const loadBookmarks = async () => {
-      const marks = await getBookmarks();
-      setSavedBookmarks(marks);
+    const loadBookmark = async () => {
       const isFav = await isBookmarked(daily.id);
       setBookmarked(isFav);
     };
-
-    loadBookmarks();
+    loadBookmark();
   }, [daily.id]);
 
   useEffect(() => {
@@ -113,9 +111,8 @@ export default function HomeScreen() {
     } else {
       musicPulse.setValue(1);
     }
-  }, [soundPlaying]);
+  }, [musicPulse, soundPlaying]);
 
-  // gentle breathing scale on the play button while it's reading
   useEffect(() => {
     if (isPlaying) {
       const pulseLoop = Animated.loop(
@@ -129,7 +126,7 @@ export default function HomeScreen() {
     } else {
       pulse.setValue(1);
     }
-  }, [isPlaying]);
+  }, [isPlaying, pulse]);
 
   const readNext = (count: number) => {
     if (count > TOTAL_READS) {
@@ -175,8 +172,7 @@ export default function HomeScreen() {
   const handleShare = async () => {
     try {
       const shareText = `✦ HAGAH\n\n${combinedText}\n\n— Hagah App`;
-      const result = await Share.share({ message: shareText });
-      console.log("Share result:", result);
+      await Share.share({ message: shareText });
     } catch (error) {
       console.log("Share error:", error);
     }
@@ -185,8 +181,6 @@ export default function HomeScreen() {
   const handleToggleBookmark = async () => {
     const newState = await toggleBookmark(daily);
     setBookmarked(newState);
-    const marks = await getBookmarks();
-    setSavedBookmarks(marks);
   };
 
   const handleSoundSelect = async (soundId: number) => {
@@ -195,8 +189,6 @@ export default function HomeScreen() {
         await soundRef.current.unloadAsync();
         soundRef.current = null;
       }
-
-      setSoundLoading(true);
       const selected = SOUND_FILES.find((sound) => sound.id === soundId);
       if (!selected) return;
 
@@ -204,10 +196,8 @@ export default function HomeScreen() {
       soundRef.current = sound;
       setActiveSound(soundId);
       setSoundPlaying(true);
-      setSoundLoading(false);
     } catch (error) {
       console.log("Sound play error:", error);
-      setSoundLoading(false);
     }
   };
 
@@ -220,26 +210,29 @@ export default function HomeScreen() {
       setActiveSound(null);
       return;
     }
-
     if (!activeSound) {
       setShowSounds(true);
       return;
     }
-
     await handleSoundSelect(activeSound);
   };
 
+  // Only the past is allowed — dayOffset can only grow, never go below 0 (today)
   const handlePreviousDay = () => {
     setDisplayDayOffset((value) => value + 1);
   };
-
+  const canGoForward = displayDayOffset > 0;
   const handleNextDay = () => {
-    setDisplayDayOffset((value) => value - 1);
+    if (!canGoForward) return;
+    setDisplayDayOffset((value) => Math.max(0, value - 1));
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
-      <TopBar />
+      <View style={styles.header}>
+        <Text style={styles.headerLogo}>✦ HAGAH</Text>
+      </View>
+
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <LinearGradient
           colors={["#241405", "#0d0700"]}
@@ -251,11 +244,22 @@ export default function HomeScreen() {
             <TouchableOpacity style={styles.dayNavBtn} onPress={handlePreviousDay} activeOpacity={0.7}>
               <Ionicons name="chevron-back" size={16} color="#c9923a" />
             </TouchableOpacity>
-            <Text style={styles.refLabel}>{daily.ref}</Text>
-            <TouchableOpacity style={styles.dayNavBtn} onPress={handleNextDay} activeOpacity={0.7}>
-              <Ionicons name="chevron-forward" size={16} color="#c9923a" />
+
+            <View style={styles.dateGroup}>
+              <Text style={styles.refLabel}>{daily.ref}</Text>
+              <Text style={styles.dateLabel}>{dateLabel}</Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.dayNavBtn, !canGoForward && styles.dayNavBtnDisabled]}
+              onPress={handleNextDay}
+              activeOpacity={canGoForward ? 0.7 : 1}
+              disabled={!canGoForward}
+            >
+              <Ionicons name="chevron-forward" size={16} color={canGoForward ? "#c9923a" : "#3a2a10"} />
             </TouchableOpacity>
           </View>
+
           <Text style={styles.scriptureText}>&quot;{daily.scripture}&quot;</Text>
 
           <View style={styles.dividerRow}>
@@ -370,18 +374,6 @@ export default function HomeScreen() {
           </View>
         </Modal>
 
-        {savedBookmarks.length > 0 ? (
-          <View style={styles.bookmarksCard}>
-            <Text style={styles.bookmarksTitle}>Saved Favorites</Text>
-            {savedBookmarks.slice(0, 3).map((item) => (
-              <View key={item.id} style={styles.bookmarkItem}>
-                <Text style={styles.bookmarkRef}>{item.ref}</Text>
-                <Text style={styles.bookmarkScripture}>&quot;{item.scripture}&quot;</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
         <View style={{ height: 100 }} />
       </ScrollView>
       <Navbar />
@@ -391,12 +383,25 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#1a0f00" },
-  scroll: { paddingHorizontal: 20, paddingTop: 16 },
+
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 6,
+  },
+  headerLogo: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#c9923a",
+    letterSpacing: 4,
+  },
+
+  scroll: { paddingHorizontal: 20, paddingTop: 4 },
 
   card: {
     borderRadius: 18,
     padding: 24,
-    marginTop: 10,
+    marginTop: 6,
     borderWidth: 0.5,
     borderColor: "rgba(201, 146, 58, 0.2)",
     overflow: "hidden",
@@ -423,13 +428,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(201, 146, 58, 0.08)",
   },
+  dayNavBtnDisabled: {
+    opacity: 0.35,
+  },
+  dateGroup: {
+    alignItems: "center",
+    gap: 2,
+  },
   refLabel: {
     fontSize: 11,
     color: "#c9923a",
     letterSpacing: 2.5,
     textTransform: "uppercase",
     fontWeight: "700",
-    marginBottom: 0,
+  },
+  dateLabel: {
+    fontSize: 10,
+    color: "rgba(201, 146, 58, 0.55)",
+    letterSpacing: 1,
   },
   scriptureText: {
     fontSize: 15,
@@ -595,37 +611,5 @@ const styles = StyleSheet.create({
   modalButtonText: {
     color: "#1a0f00",
     fontWeight: "700",
-  },
-  bookmarksCard: {
-    marginTop: 18,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: "rgba(201, 146, 58, 0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(201, 146, 58, 0.16)",
-  },
-  bookmarksTitle: {
-    fontSize: 12,
-    color: "#c9923a",
-    letterSpacing: 1.6,
-    textTransform: "uppercase",
-    fontWeight: "700",
-    marginBottom: 10,
-  },
-  bookmarkItem: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(201, 146, 58, 0.12)",
-  },
-  bookmarkRef: {
-    fontSize: 11,
-    color: "#f5d49a",
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  bookmarkScripture: {
-    fontSize: 13,
-    color: "rgba(245, 212, 154, 0.8)",
-    lineHeight: 20,
   },
 });
