@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ScrollView, StyleSheet, Dimensions } from "react-native";
+import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 // Import vector icons
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -8,10 +8,18 @@ import TopBar from "../../components/ui/TopBar";
 
 const { width } = Dimensions.get("window");
 
-const sections = [
+type Section = {
+  iconType: "hebrew" | "vector";
+  iconFamily?: "Ionicons" | "MaterialCommunityIcons";
+  iconName?: string;
+  title: string;
+  body: string;
+};
+
+const sections: Section[] = [
   {
     // Keeping Hebrew text layout since it's the theme, but handled separately below
-    iconType: "hebrew", 
+    iconType: "hebrew",
     title: "What is Hagah?",
     body: "Hagah (הגה) is the Hebrew word for meditate — but it means far more than quiet reflection. It means to murmur, to mutter, to declare aloud. It is the sound a lion makes over its prey. It is intentional, vocal, repeated confession of God's Word.",
   },
@@ -58,9 +66,9 @@ export default function AboutScreen() {
               {s.iconType === "hebrew" ? (
                 <Text style={styles.cardHebrewIcon}>הגה</Text>
               ) : s.iconFamily === "Ionicons" ? (
-                <Ionicons name={s.iconName} size={22} color="#c9923a" />
+                <Ionicons name={s.iconName as React.ComponentProps<typeof Ionicons>["name"]} size={22} color="#c9923a" />
               ) : (
-                <MaterialCommunityIcons name={s.iconName} size={22} color="#c9923a" />
+                <MaterialCommunityIcons name={s.iconName as React.ComponentProps<typeof MaterialCommunityIcons>["name"]} size={22} color="#c9923a" />
               )}
             </View>
             <Text style={styles.cardTitle}>{s.title}</Text>

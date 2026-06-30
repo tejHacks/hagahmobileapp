@@ -9,13 +9,41 @@ const isSmallDevice = width < 375;
 const isTablet = width >= 768;
 const scale = (size: number) => {
   if (isTablet) return size * 1.2;
-  if (isSmallDevice) return size * 0.9;
+  if (isSmallDevice) return size * 0.85;
   return size;
 };
 
 const tabs = [
-  { label: "Declare", route: "/home/home", icon: "flame-outline", iconActive: "flame" },
-  { label: "About", route: "/home/about", icon: "information-circle-outline", iconActive: "information-circle" },
+  {
+    label: "Declare",
+    route: "/home/home",
+    icon: "mic-outline",
+    iconActive: "mic",
+  },
+  {
+    label: "War",
+    route: "/home/war",
+    icon: "shield-outline",
+    iconActive: "shield",
+  },
+  {
+    label: "Pins",
+    route: "/home/pins",
+    icon: "pin-outline",
+    iconActive: "pin",
+  },
+  {
+    label: "Settings",
+    route: "/home/settings",
+    icon: "settings-outline",
+    iconActive: "settings",
+  },
+  {
+    label: "About",
+    route: "/home/about",
+    icon: "information-circle-outline",
+    iconActive: "information-circle",
+  },
 ];
 
 export default function Navbar() {
@@ -35,13 +63,23 @@ export default function Navbar() {
               style={styles.tab}
               activeOpacity={0.7}
             >
-              <View style={[styles.indicator, { backgroundColor: isActive ? "#c9923a" : "transparent" }]} />
+              <View
+                style={[
+                  styles.indicator,
+                  { backgroundColor: isActive ? "#c9923a" : "transparent" },
+                ]}
+              />
               <Ionicons
                 name={(isActive ? iconActive : icon) as any}
-                size={scale(22)}
+                size={scale(20)}
                 color={isActive ? "#c9923a" : "#5a3e1b"}
               />
-              <Text style={[styles.label, { color: isActive ? "#f5d49a" : "#5a3e1b" }]}>
+              <Text
+                style={[
+                  styles.label,
+                  { color: isActive ? "#f5d49a" : "#5a3e1b" },
+                ]}
+              >
                 {label.toUpperCase()}
               </Text>
             </TouchableOpacity>
@@ -65,7 +103,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    paddingHorizontal: scale(8),
+    paddingHorizontal: scale(4),
   },
   tab: {
     flex: 1,
@@ -74,14 +112,14 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   indicator: {
-    width: 20,
+    width: 16,
     height: 2,
     borderRadius: 1,
     marginBottom: 2,
   },
   label: {
-    fontSize: scale(9),
+    fontSize: scale(8),
     fontWeight: "700",
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
 });
