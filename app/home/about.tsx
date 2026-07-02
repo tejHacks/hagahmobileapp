@@ -1,16 +1,11 @@
-import React from "react";
-import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-// Import vector icons
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import React from "react";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Navbar from "../../components/ui/Navbar";
-import TopBar from "../../components/ui/TopBar";
-
-const { width } = Dimensions.get("window");
 
 type Section = {
-  iconType: "hebrew" | "vector";
-  iconFamily?: "Ionicons" | "MaterialCommunityIcons";
+  iconType: "hebrew" | "ionicons" | "mci";
   iconName?: string;
   title: string;
   body: string;
@@ -18,28 +13,24 @@ type Section = {
 
 const sections: Section[] = [
   {
-    // Keeping Hebrew text layout since it's the theme, but handled separately below
     iconType: "hebrew",
     title: "What is Hagah?",
     body: "Hagah (הגה) is the Hebrew word for meditate — but it means far more than quiet reflection. It means to murmur, to mutter, to declare aloud. It is the sound a lion makes over its prey. It is intentional, vocal, repeated confession of God's Word.",
   },
   {
-    iconType: "vector",
-    iconFamily: "Ionicons",
+    iconType: "ionicons",
     iconName: "color-wand-outline",
     title: "How it works",
     body: "Each day, you receive one scripture-backed declaration. Read it. Speak it aloud. Tap through all 5 meditation circles. Let the Word of God saturate your spirit before you face the day.",
   },
   {
-    iconType: "vector",
-    iconFamily: "Ionicons",
+    iconType: "ionicons",
     iconName: "flame-outline",
     title: "Why declarations?",
     body: "Proverbs 18:21 says death and life are in the power of the tongue. Romans 10:10 says with the mouth, confession is made unto salvation. What you speak consistently, you begin to believe. What you believe, you walk in.",
   },
   {
-    iconType: "vector",
-    iconFamily: "MaterialCommunityIcons",
+    iconType: "mci",
     iconName: "book-open-variant",
     title: "The scriptures",
     body: "Every declaration in Hagah is rooted in scripture. We don't make things up — every word is anchored in the Bible. You will find references from Genesis to Revelation, covering dominion, healing, prosperity, purpose, and more.",
@@ -48,10 +39,11 @@ const sections: Section[] = [
 
 export default function AboutScreen() {
   return (
-    <SafeAreaView style={styles.safe} edges={["left", "right"]}>
-      <TopBar />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
+    <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Hero */}
         <View style={styles.hero}>
           <Text style={styles.heroHebrew}>הגה</Text>
@@ -62,13 +54,21 @@ export default function AboutScreen() {
         {/* Sections */}
         {sections.map((s, i) => (
           <View key={i} style={styles.card}>
-            <View style={styles.iconContainer}>
+            <View style={styles.iconWrap}>
               {s.iconType === "hebrew" ? (
                 <Text style={styles.cardHebrewIcon}>הגה</Text>
-              ) : s.iconFamily === "Ionicons" ? (
-                <Ionicons name={s.iconName as React.ComponentProps<typeof Ionicons>["name"]} size={22} color="#c9923a" />
+              ) : s.iconType === "ionicons" ? (
+                <Ionicons
+                  name={s.iconName as React.ComponentProps<typeof Ionicons>["name"]}
+                  size={22}
+                  color="#c9923a"
+                />
               ) : (
-                <MaterialCommunityIcons name={s.iconName as React.ComponentProps<typeof MaterialCommunityIcons>["name"]} size={22} color="#c9923a" />
+                <MaterialCommunityIcons
+                  name={s.iconName as React.ComponentProps<typeof MaterialCommunityIcons>["name"]}
+                  size={22}
+                  color="#c9923a"
+                />
               )}
             </View>
             <Text style={styles.cardTitle}>{s.title}</Text>
@@ -76,7 +76,7 @@ export default function AboutScreen() {
           </View>
         ))}
 
-        {/* Footer with updated full KJV scripture */}
+        {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerVerse}>
             "This book of the law shall not depart out of thy mouth;{"\n"}
@@ -90,20 +90,29 @@ export default function AboutScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
       <Navbar />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#1a0f00" },
-  scroll: { paddingHorizontal: 20, paddingTop: 16, gap: 14 },
+  safe: {
+    flex: 1,
+    backgroundColor: "#1a0f00",
+  },
+  scroll: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+
+  // Hero
   hero: {
     alignItems: "center",
     paddingVertical: 28,
     borderBottomWidth: 0.5,
     borderBottomColor: "rgba(201, 146, 58, 0.15)",
-    marginBottom: 4,
+    marginBottom: 16,
   },
   heroHebrew: {
     fontSize: 52,
@@ -125,16 +134,19 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     fontStyle: "italic",
   },
+
+  // Cards
   card: {
     backgroundColor: "#2d1800",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 18,
     borderWidth: 0.5,
     borderColor: "rgba(201, 146, 58, 0.15)",
+    marginBottom: 12,
     gap: 8,
   },
-  iconContainer: {
-    height: 24,
+  iconWrap: {
+    height: 26,
     justifyContent: "center",
   },
   cardHebrewIcon: {
@@ -153,9 +165,11 @@ const styles = StyleSheet.create({
     color: "rgba(245, 212, 154, 0.65)",
     lineHeight: 22,
   },
+
+  // Footer
   footer: {
     alignItems: "center",
-    paddingVertical: 24,
+    paddingVertical: 28,
     gap: 10,
   },
   footerVerse: {
@@ -163,7 +177,7 @@ const styles = StyleSheet.create({
     color: "rgba(201, 146, 58, 0.5)",
     fontStyle: "italic",
     textAlign: "center",
-    lineHeight: 18,
+    lineHeight: 20,
   },
   footerBold: {
     color: "#c9923a",

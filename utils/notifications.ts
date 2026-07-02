@@ -11,25 +11,20 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export const AVAILABLE_TIMES = [
-  { label: "6:00 AM", hour: 6, minute: 0 },
-  { label: "9:00 AM", hour: 9, minute: 0 },
-  { label: "12:00 PM", hour: 12, minute: 0 },
-  { label: "3:00 PM", hour: 15, minute: 0 },
-  { label: "6:00 PM", hour: 18, minute: 0 },
-];
+export type ScheduledPeriod = {
+  period: "morning" | "afternoon" | "evening";
+  hour: number;   // 24-hr format
+  minute: number;
+};
 
-export type TimeSlot = (typeof AVAILABLE_TIMES)[number];
-
-// Shared across the daily schedule and the test notification,
-// so the test fires the exact same kind of message a real one would.
-export const DECLARATION_MESSAGES = [
-  "Open Hagah and speak the Word over your day. הגה",
-  "Your midday declaration is ready. Rise and declare! הגה",
-  "Speak the Word. It is working for you right now. הגה",
-  "Your afternoon declaration awaits. Don't let it pass. הגה",
-  "End your day with the Word on your lips. הגה",
-];
+const PERIOD_MESSAGES: Record<ScheduledPeriod["period"], string> = {
+  morning:
+    "Start your morning with the Word on your lips. Open Hagah and declare. הגה",
+  afternoon:
+    "Your midday declaration is ready. Rise and speak it out loud. הגה",
+  evening:
+    "End your day with the Word. Let it be the last thing you meditate on. הגה",
+};
 
 export async function requestNotificationPermission(): Promise<boolean> {
   if (Platform.OS === "android") {
@@ -46,30 +41,28 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return status === "granted";
 }
 
-export async function scheduleDeclarationsForTimes(
-  selectedHours: number[],
+export async function scheduleDeclarationsForPeriods(
+  periods: ScheduledPeriod[]
 ): Promise<string[]> {
   try {
     const granted = await requestNotificationPermission();
     if (!granted) return [];
+
     await cancelAllDeclarations();
+
     const ids: string[] = [];
-    for (const hour of selectedHours) {
-      const timeSlot = AVAILABLE_TIMES.find((t) => t.hour === hour);
-      if (!timeSlot) continue;
-      const msgIndex = AVAILABLE_TIMES.indexOf(timeSlot);
-      const body = DECLARATION_MESSAGES[msgIndex] ?? DECLARATION_MESSAGES[0];
+    for (const slot of periods) {
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: "✦ Time to Hagah",
-          body,
+          body: PERIOD_MESSAGES[slot.period],
           sound: true,
-          data: { hour },
+          data: { period: slot.period, hour: slot.hour, minute: slot.minute },
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour: timeSlot.hour,
-          minute: timeSlot.minute,
+          hour: slot.hour,
+          minute: slot.minute,
         },
       });
       ids.push(id);
@@ -81,23 +74,24 @@ export async function scheduleDeclarationsForTimes(
   }
 }
 
-/* Fires the same kind of notification the daily schedule sends,
-but 10 seconds from now — for testing delivery on a real device/build.
-Confirmed working — commented out, uncomment if you need to re-test delivery.
+export async function cancelAllDeclarations(): Promise<void> {
+  await Notifications.cancelAllScheduledNotificationsAsync();
+}
 
-export async function sendTestNotificationIn10Seconds(): Promise<
-  string | null
-> {
+export async function getScheduledNotifications() {
+  return await Notifications.getAllScheduledNotificationsAsync();
+}
+
+/* Uncomment to test delivery on real device:
+
+export async function sendTestNotificationIn10Seconds(): Promise<string | null> {
   try {
     const granted = await requestNotificationPermission();
     if (!granted) return null;
-
-    const body = DECLARATION_MESSAGES[0];
-
     const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: "✦ Time to Hagah",
-        body,
+        body: PERIOD_MESSAGES.morning,
         sound: true,
         data: { test: true },
       },
@@ -113,11 +107,3 @@ export async function sendTestNotificationIn10Seconds(): Promise<
   }
 }
 */
-
-export async function cancelAllDeclarations(): Promise<void> {
-  await Notifications.cancelAllScheduledNotificationsAsync();
-}
-
-export async function getScheduledNotifications() {
-  return await Notifications.getAllScheduledNotificationsAsync();
-}

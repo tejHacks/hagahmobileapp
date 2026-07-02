@@ -1,189 +1,201 @@
-import React, { useState, useEffect } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Switch,
-  StyleSheet,
-  Dimensions,
   Alert,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+
 import Navbar from "../../components/ui/Navbar";
+import TimePickerModal, { type Period } from "../../components/ui/TimePickerModal";
 import {
-  requestNotificationPermission,
-  scheduleDeclarationsForTimes,
   cancelAllDeclarations,
   getScheduledNotifications,
-  // sendTestNotificationIn10Seconds, // dev test only — re-enable if you need to verify delivery again
-  AVAILABLE_TIMES,
+  requestNotificationPermission,
+  scheduleDeclarationsForPeriods,
+  type ScheduledPeriod,
 } from "../../utils/notifications";
-import { declarations } from "../../data/declarations";
 
-const { width } = Dimensions.get("window");
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
-function getDailyDeclaration() {
-  const start = new Date("2025-01-01").getTime();
-  const now = new Date().getTime();
-  const dayIndex = Math.floor((now - start) / (1000 * 60 * 60 * 24));
-  return declarations[dayIndex % declarations.length];
+function toHour24(chip: number, period: Period): number {
+  if (period === "morning") return chip === 12 ? 0 : chip;
+  return chip === 12 ? 12 : chip + 12;
 }
 
-const TIME_ICONS: Record<number, string> = {
-  6: "sunny-outline",
-  9: "partly-sunny-outline",
-  12: "sunny",
-  15: "cloudy-outline",
-  18: "moon-outline",
+function formatTime(chip: number, period: Period): string {
+  const suffix = period === "morning" ? "AM" : "PM";
+  return `${chip}:00 ${suffix}`;
+}
+
+const KEYS = {
+  morningChip: "hagah_morning_chip",
+  afternoonChip: "hagah_afternoon_chip",
+  eveningChip: "hagah_evening_chip",
+  notifsOn: "hagah_notifs_on",
 };
 
+// ─── component ───────────────────────────────────────────────────────────────
+
 export default function SettingsScreen() {
-  const router = useRouter();
   const [notificationsOn, setNotificationsOn] = useState(false);
-  const [selectedHours, setSelectedHours] = useState<number[]>([6]);
   const [loading, setLoading] = useState(false);
-  // const [testVisible, setTestVisible] = useState(true); // dev test only
-  // const [testSending, setTestSending] = useState(false); // dev test only
-  // const [testSent, setTestSent] = useState(false); // dev test only
-  const daily = getDailyDeclaration();
+
+  const [morningChip, setMorningChip] = useState(6);
+  const [afternoonChip, setAfternoonChip] = useState(12);
+  const [eveningChip, setEveningChip] = useState(6);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [activePeriod, setActivePeriod] = useState<Period>("morning");
 
   useEffect(() => {
     (async () => {
-      const scheduled = await getScheduledNotifications();
-      if (scheduled.length > 0) {
-        setNotificationsOn(true);
-        const hours = scheduled
-          .map((n) => n.content.data?.hour as number)
-          .filter(Boolean);
-        if (hours.length > 0) setSelectedHours(hours);
-      }
+      const [mc, ac, ec, no, scheduled] = await Promise.all([
+        AsyncStorage.getItem(KEYS.morningChip),
+        AsyncStorage.getItem(KEYS.afternoonChip),
+        AsyncStorage.getItem(KEYS.eveningChip),
+        AsyncStorage.getItem(KEYS.notifsOn),
+        getScheduledNotifications(),
+      ]);
+      if (mc) setMorningChip(Number(mc));
+      if (ac) setAfternoonChip(Number(ac));
+      if (ec) setEveningChip(Number(ec));
+      if (no === "true" && scheduled.length > 0) setNotificationsOn(true);
     })();
   }, []);
 
-  const handleNotificationsToggle = async (value: boolean) => {
+  function buildPeriods(mc = morningChip, ac = afternoonChip, ec = eveningChip): ScheduledPeriod[] {
+    return [
+      { period: "morning", hour: toHour24(mc, "morning"), minute: 0 },
+      { period: "afternoon", hour: toHour24(ac, "afternoon"), minute: 0 },
+      { period: "evening", hour: toHour24(ec, "evening"), minute: 0 },
+    ];
+  }
+
+  const handleToggle = async (value: boolean) => {
     if (value) {
       setLoading(true);
       const granted = await requestNotificationPermission();
       setLoading(false);
-
       if (!granted) {
         Alert.alert(
           "Permission Required",
-          "Please allow notifications in your device settings to receive daily declarations.",
+          "Please enable notifications in your device settings.",
           [{ text: "OK" }]
         );
         return;
       }
-
-      // Schedule with current selected hours immediately
-      await scheduleDeclarationsForTimes(selectedHours);
+      await scheduleDeclarationsForPeriods(buildPeriods());
       setNotificationsOn(true);
+      await AsyncStorage.setItem(KEYS.notifsOn, "true");
     } else {
       await cancelAllDeclarations();
       setNotificationsOn(false);
+      await AsyncStorage.setItem(KEYS.notifsOn, "false");
     }
   };
 
-  const toggleHour = async (hour: number) => {
-    let updated: number[];
+  const openPicker = (period: Period) => {
+    if (!notificationsOn) return;
+    setActivePeriod(period);
+    setModalOpen(true);
+  };
 
-    if (selectedHours.includes(hour)) {
-      if (selectedHours.length === 1) {
-        Alert.alert(
-          "At least one time",
-          "You need at least one reminder time selected.",
-          [{ text: "Got it" }]
-        );
-        return;
-      }
-      updated = selectedHours.filter((h) => h !== hour);
+  const handleConfirm = async (chip: number) => {
+    let newMc = morningChip;
+    let newAc = afternoonChip;
+    let newEc = eveningChip;
+
+    if (activePeriod === "morning") {
+      setMorningChip(chip); newMc = chip;
+      await AsyncStorage.setItem(KEYS.morningChip, String(chip));
+    } else if (activePeriod === "afternoon") {
+      setAfternoonChip(chip); newAc = chip;
+      await AsyncStorage.setItem(KEYS.afternoonChip, String(chip));
     } else {
-      updated = [...selectedHours, hour].sort((a, b) => a - b);
+      setEveningChip(chip); newEc = chip;
+      await AsyncStorage.setItem(KEYS.eveningChip, String(chip));
     }
-
-    setSelectedHours(updated);
 
     if (notificationsOn) {
       setLoading(true);
-      await scheduleDeclarationsForTimes(updated);
+      await scheduleDeclarationsForPeriods(buildPeriods(newMc, newAc, newEc));
       setLoading(false);
     }
   };
 
-  /* const handleTestNotification = async () => {
-    setTestSending(true);
-    const id = await sendTestNotificationIn10Seconds();
-    setTestSending(false);
+  const currentChip =
+    activePeriod === "morning" ? morningChip
+    : activePeriod === "afternoon" ? afternoonChip
+    : eveningChip;
 
-    if (!id) {
-      Alert.alert(
-        "Permission Required",
-        "Please allow notifications in your device settings to run the test.",
-        [{ text: "OK" }]
-      );
-      return;
-    }
-
-    setTestSent(true);
-    setTimeout(() => setTestSent(false), 4000);
-  }; */
-
-  const activeLabels = AVAILABLE_TIMES.filter((t) =>
-    selectedHours.includes(t.hour)
-  ).map((t) => t.label);
+  const PeriodRow = ({
+    period, label, icon, chip, isFirst,
+  }: {
+    period: Period; label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    chip: number; isFirst?: boolean;
+  }) => {
+    const disabled = !notificationsOn;
+    return (
+      <>
+        {!isFirst && <View style={styles.divider} />}
+        <TouchableOpacity
+          style={[styles.periodRow, disabled && styles.periodRowDisabled]}
+          onPress={() => openPicker(period)}
+          activeOpacity={disabled ? 1 : 0.7}
+          disabled={disabled || loading}
+        >
+          <View style={[styles.periodIconWrap, disabled && styles.periodIconWrapDim]}>
+            <Ionicons name={icon} size={16} color={disabled ? "#3a2510" : "#c9923a"} />
+          </View>
+          <Text style={[styles.periodLabel, disabled && styles.dimText]}>{label}</Text>
+          <View style={styles.periodTimeWrap}>
+            <Text style={[styles.periodTime, disabled && styles.dimText]}>
+              {formatTime(chip, period)}
+            </Text>
+            {!disabled && (
+              <Ionicons name="chevron-forward" size={14} color="rgba(201,146,58,0.4)" />
+            )}
+          </View>
+        </TouchableOpacity>
+      </>
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["left", "right"]}>
-      {/* Top bar */}
+    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chevron-back" size={20} color="#c9923a" />
-        </TouchableOpacity>
         <Text style={styles.topTitle}>SETTINGS</Text>
-        <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Today's declaration */}
-        <Text style={styles.sectionLabel}>TODAY'S DECLARATION</Text>
-        <View style={styles.card}>
-          <Text style={styles.declRef}>{daily.ref}</Text>
-          <Text style={styles.declText} numberOfLines={3}>
-            {daily.declaration}
-          </Text>
-        </View>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Notifications */}
+        {/* NOTIFICATIONS */}
         <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
         <View style={styles.card}>
-          {/* Master toggle */}
-          <View style={styles.row}>
-            <View style={styles.rowLeft}>
-              <Ionicons
-                name="notifications-outline"
-                size={18}
-                color="#c9923a"
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>Daily Reminders</Text>
-                <Text style={styles.rowSub}>
-                  Get reminded to declare every day
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleLeft}>
+              <View style={styles.toggleIcon}>
+                <Ionicons name="notifications-outline" size={17} color="#c9923a" />
+              </View>
+              <View>
+                <Text style={styles.toggleTitle}>Daily Reminders</Text>
+                <Text style={styles.toggleSub}>
+                  {notificationsOn ? "Reminders are active" : "Tap to enable declarations"}
                 </Text>
               </View>
             </View>
             <Switch
               value={notificationsOn}
-              onValueChange={handleNotificationsToggle}
+              onValueChange={handleToggle}
               trackColor={{ false: "#1a0f00", true: "#c9923a" }}
               thumbColor={notificationsOn ? "#f5d49a" : "#5a3e1b"}
               disabled={loading}
@@ -192,153 +204,133 @@ export default function SettingsScreen() {
 
           <View style={styles.divider} />
 
-          {/* Time picker — always visible, just disabled when notifs off */}
-          <View style={styles.timeSection}>
-            <View style={styles.timeSectionHeader}>
-              <Ionicons name="alarm-outline" size={15} color="#c9923a" />
-              <Text style={styles.timeSectionTitle}>Reminder Times</Text>
-            </View>
-
-            <Text style={styles.timeSectionSub}>
-              {notificationsOn
-                ? "Tap to toggle when you want to be reminded"
-                : "Turn on reminders above to pick times"}
+          {!notificationsOn && (
+            <Text style={styles.disabledHint}>
+              Enable reminders above to set your times
             </Text>
+          )}
 
-            {/* Time chips */}
-            <View style={styles.timeGrid}>
-              {AVAILABLE_TIMES.map((slot) => {
-                const active =
-                  notificationsOn && selectedHours.includes(slot.hour);
-                const disabled = !notificationsOn;
-                return (
-                  <TouchableOpacity
-                    key={slot.hour}
-                    style={[
-                      styles.timeChip,
-                      active && styles.timeChipActive,
-                      disabled && styles.timeChipDisabled,
-                    ]}
-                    onPress={() => toggleHour(slot.hour)}
-                    activeOpacity={0.75}
-                    disabled={disabled || loading}
-                  >
-                    <Ionicons
-                      name={TIME_ICONS[slot.hour] as any}
-                      size={14}
-                      color={
-                        disabled ? "#2d1800" : active ? "#1a0f00" : "#5a3e1b"
-                      }
-                    />
-                    <Text
-                      style={[
-                        styles.timeChipText,
-                        active && styles.timeChipTextActive,
-                        disabled && styles.timeChipTextDisabled,
-                      ]}
-                    >
-                      {slot.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+          <PeriodRow period="morning" label="Morning" icon="sunny-outline" chip={morningChip} isFirst />
+          <PeriodRow period="afternoon" label="Afternoon" icon="partly-sunny-outline" chip={afternoonChip} />
+          <PeriodRow period="evening" label="Evening" icon="moon-outline" chip={eveningChip} />
 
-            {/* Active summary */}
-            {notificationsOn && selectedHours.length > 0 && (
-              <View style={styles.summaryPill}>
-                <Ionicons name="checkmark-circle" size={14} color="#c9923a" />
-                <Text style={styles.summaryText}>
-                  You'll be reminded at{" "}
-                  <Text style={styles.summaryBold}>
-                    {activeLabels.join(", ")}
-                  </Text>{" "}
-                  every day
+          {notificationsOn && (
+            <View style={styles.summaryPill}>
+              <Ionicons name="checkmark-circle" size={13} color="#c9923a" />
+              <Text style={styles.summaryText}>
+                {"Reminding you at "}
+                <Text style={styles.summaryBold}>
+                  {`${formatTime(morningChip, "morning")}, ${formatTime(afternoonChip, "afternoon")}, ${formatTime(eveningChip, "evening")}`}
                 </Text>
-              </View>
-            )}
+                {" daily"}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* SUPPORT */}
+        <Text style={styles.sectionLabel}>SUPPORT HAGAH</Text>
+        <TouchableOpacity
+          style={styles.supportCard}
+          activeOpacity={0.85}
+          onPress={() => Linking.openURL("https://buymeacoffee.com/tejuhacks")}
+        >
+          <View style={styles.supportGlow} />
+          <View style={styles.supportContent}>
+            <Text style={styles.supportHebrew}>✦</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.supportTitle}>Support Our Work</Text>
+              <Text style={styles.supportSub}>
+                Hagah is built with faith and late nights. If it's been a
+                blessing, consider giving so we can keep building.
+              </Text>
+            </View>
           </View>
-        </View>
+          <View style={styles.supportFooter}>
+            <Text style={styles.supportCta}>GIVE NOW</Text>
+            <Ionicons name="heart" size={13} color="#1a0f00" />
+          </View>
+        </TouchableOpacity>
 
-        {/* Test notification — dev tool, commented out after confirming delivery works
-        {testVisible && (
-          <>
-            <Text style={styles.sectionLabel}>TEST NOTIFICATION</Text>
-            <View style={styles.card}>
-              <View style={styles.testHeader}>
-                <View style={styles.rowLeft}>
-                  <Ionicons name="notifications" size={18} color="#c9923a" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.rowTitle}>Send Test (10s)</Text>
-                    <Text style={styles.rowSub}>
-                      Fires the real daily message in 10 seconds
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setTestVisible(false)}
-                  activeOpacity={0.7}
-                  style={styles.hideBtn}
-                >
-                  <Ionicons name="close" size={16} color="#5a3e1b" />
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                style={[styles.testBtn, testSent && styles.testBtnSent]}
-                onPress={handleTestNotification}
-                activeOpacity={0.85}
-                disabled={testSending}
-              >
-                <Ionicons
-                  name={testSent ? "checkmark" : "notifications-outline"}
-                  size={15}
-                  color="#1a0f00"
-                />
-                <Text style={styles.testBtnText}>
-                  {testSending
-                    ? "Scheduling..."
-                    : testSent
-                    ? "Sent! Check in ~10s"
-                    : "Send Test Notification"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-        */}
-
-        {/* App info */}
-        <Text style={styles.sectionLabel}>APP</Text>
+        {/* FEEDBACK */}
+        <Text style={styles.sectionLabel}>FEEDBACK</Text>
         <View style={styles.card}>
-          {[
-            { key: "App Name", val: "Hagah" },
-            { key: "Version", val: "1.0.0" },
-            { key: "Declarations", val: "English KJV Bible Inspired" },
-            { key: "Built with", val: "Faith & React Native" },
-          ].map((item, i, arr) => (
-            <React.Fragment key={item.key}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoKey}>{item.key}</Text>
-                <Text style={styles.infoVal}>{item.val}</Text>
-              </View>
-              {i < arr.length - 1 && <View style={styles.divider} />}
-            </React.Fragment>
-          ))}
+          <TouchableOpacity
+            style={styles.feedbackRow}
+            activeOpacity={0.7}
+            onPress={() =>
+              Linking.openURL("mailto:olateju202@gmail.com?subject=Hagah%20Feedback&body=Hi%20Olateju%2C%0A%0A")
+            }
+          >
+            <View style={styles.feedbackIcon}>
+              <Ionicons name="mail-outline" size={16} color="#c9923a" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.feedbackTitle}>Send Feedback</Text>
+              <Text style={styles.feedbackSub}>olateju202@gmail.com</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={15} color="rgba(201,146,58,0.35)" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.feedbackRow}
+            activeOpacity={0.7}
+            onPress={() =>
+              Linking.openURL("https://play.google.com/store/apps/details?id=com.tejuhacks.hagah")
+            }
+          >
+            <View style={styles.feedbackIcon}>
+              <Ionicons name="star-outline" size={16} color="#c9923a" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.feedbackTitle}>Rate on Play Store</Text>
+              <Text style={styles.feedbackSub}>A review means the world to us</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={15} color="rgba(201,146,58,0.35)" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.feedbackRow}
+            activeOpacity={0.7}
+            onPress={() =>
+              Linking.openURL("mailto:olateju202@gmail.com?subject=Hagah%20Suggestion&body=Hi%2C%20I%20have%20a%20suggestion%3A%0A%0A")
+            }
+          >
+            <View style={styles.feedbackIcon}>
+              <Ionicons name="bulb-outline" size={16} color="#c9923a" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.feedbackTitle}>Send a Suggestion</Text>
+              <Text style={styles.feedbackSub}>Got an idea? We're listening</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={15} color="rgba(201,146,58,0.35)" />
+          </TouchableOpacity>
         </View>
 
-        {/* Scripture */}
+        {/* Verse footer */}
         <View style={styles.verseCard}>
           <Text style={styles.verseText}>
-            "You shall <Text style={styles.verseBold}>hagah</Text> in it day
-            and night, that you may observe to do according to all that is
-            written in it. For then you will make your way prosperous."
+            {"\"thou shalt "}
+            <Text style={styles.verseBold}>hagah</Text>
+            {" therein day and night... for then thou shalt make thy way prosperous.\""}
           </Text>
           <Text style={styles.verseRef}>Joshua 1:8</Text>
         </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 110 }} />
       </ScrollView>
+
+      <TimePickerModal
+        visible={modalOpen}
+        period={activePeriod}
+        currentChip={currentChip}
+        onConfirm={handleConfirm}
+        onClose={() => setModalOpen(false)}
+      />
 
       <Navbar />
     </SafeAreaView>
@@ -346,236 +338,243 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#1a0f00" },
+  safe: { flex: 1, backgroundColor: "#0d0700" },
+
   topBar: {
-    width,
     backgroundColor: "#120900",
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(201, 146, 58, 0.15)",
+    borderBottomColor: "rgba(201, 146, 58, 0.12)",
+    paddingHorizontal: 22,
+    paddingVertical: 18,
+  },
+  topTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#c9923a",
+    letterSpacing: 4,
+  },
+
+  scroll: { paddingHorizontal: 20, paddingTop: 22, gap: 10 },
+
+  sectionLabel: {
+    fontSize: 9,
+    color: "#4a2e10",
+    letterSpacing: 2.5,
+    fontWeight: "700",
+    marginBottom: 6,
+    marginTop: 10,
+    paddingHorizontal: 4,
+  },
+
+  card: {
+    backgroundColor: "#1e1100",
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 6,
+    borderWidth: 0.5,
+    borderColor: "rgba(201, 146, 58, 0.12)",
+  },
+
+  divider: {
+    height: 0.5,
+    backgroundColor: "rgba(201, 146, 58, 0.08)",
+  },
+
+  toggleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
+    gap: 12,
   },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: "#2d1800",
+  toggleLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    flex: 1,
+  },
+  toggleIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "rgba(201, 146, 58, 0.1)",
     borderWidth: 0.5,
     borderColor: "rgba(201, 146, 58, 0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
-  topTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#c9923a",
-    letterSpacing: 3,
-  },
-  scroll: { paddingHorizontal: 20, paddingTop: 20, gap: 10 },
-  sectionLabel: {
-    fontSize: 10,
-    color: "#5a3e1b",
-    letterSpacing: 2,
-    fontWeight: "700",
-    marginBottom: 4,
-    marginTop: 8,
-  },
-  card: {
-    backgroundColor: "#2d1800",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 0.5,
-    borderColor: "rgba(201, 146, 58, 0.15)",
-    gap: 10,
-  },
-  declRef: {
-    fontSize: 11,
-    color: "#c9923a",
-    letterSpacing: 2,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  declText: {
-    fontSize: 13,
-    color: "rgba(245, 212, 154, 0.7)",
-    lineHeight: 20,
-    fontStyle: "italic",
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  rowLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    flex: 1,
-  },
-  rowTitle: {
-    fontSize: 14,
+  toggleTitle: {
+    fontSize: 15,
     color: "#f5d49a",
     fontWeight: "600",
   },
-  rowSub: {
+  toggleSub: {
     fontSize: 11,
     color: "#5a3e1b",
     marginTop: 2,
   },
-  divider: {
-    height: 0.5,
-    backgroundColor: "rgba(201, 146, 58, 0.1)",
-  },
-  timeSection: {
-    gap: 10,
-  },
-  timeSectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  timeSectionTitle: {
-    fontSize: 13,
-    color: "#f5d49a",
-    fontWeight: "600",
-  },
-  timeSectionSub: {
+
+  disabledHint: {
     fontSize: 11,
-    color: "#5a3e1b",
-    lineHeight: 16,
+    color: "#3a2510",
+    paddingVertical: 12,
+    paddingHorizontal: 2,
+    fontStyle: "italic",
   },
-  timeGrid: {
+
+  periodRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+    alignItems: "center",
+    paddingVertical: 15,
+    gap: 14,
   },
-  timeChip: {
+  periodRowDisabled: { opacity: 0.4 },
+  periodIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: "rgba(201, 146, 58, 0.08)",
+    borderWidth: 0.5,
+    borderColor: "rgba(201, 146, 58, 0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  periodIconWrapDim: {
+    backgroundColor: "rgba(201, 146, 58, 0.03)",
+    borderColor: "rgba(201, 146, 58, 0.06)",
+  },
+  periodLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: "#f5d49a",
+    fontWeight: "500",
+  },
+  periodTimeWrap: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#1a0f00",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderWidth: 0.5,
-    borderColor: "rgba(201, 146, 58, 0.2)",
   },
-  timeChipActive: {
-    backgroundColor: "#c9923a",
-    borderColor: "#c9923a",
+  periodTime: {
+    fontSize: 14,
+    color: "#c9923a",
+    fontWeight: "700",
   },
-  timeChipDisabled: {
-    backgroundColor: "#120900",
-    borderColor: "rgba(201, 146, 58, 0.05)",
-    opacity: 0.4,
-  },
-  timeChipText: {
-    fontSize: 12,
-    color: "#5a3e1b",
-    fontWeight: "600",
-  },
-  timeChipTextActive: {
-    color: "#1a0f00",
-  },
-  timeChipTextDisabled: {
-    color: "#2d1800",
-  },
+  dimText: { color: "#3a2510" },
+
   summaryPill: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 6,
-    backgroundColor: "rgba(201, 146, 58, 0.08)",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    gap: 8,
+    backgroundColor: "rgba(201, 146, 58, 0.06)",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderWidth: 0.5,
-    borderColor: "rgba(201, 146, 58, 0.2)",
+    borderColor: "rgba(201, 146, 58, 0.15)",
+    marginTop: 4,
+    marginBottom: 6,
   },
   summaryText: {
     fontSize: 12,
-    color: "rgba(201, 146, 58, 0.7)",
+    color: "rgba(201, 146, 58, 0.6)",
     lineHeight: 18,
     flex: 1,
   },
-  summaryBold: {
-    color: "#c9923a",
-    fontWeight: "700",
+  summaryBold: { color: "#c9923a", fontWeight: "700" },
+
+  supportCard: {
+    backgroundColor: "#241405",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(201, 146, 58, 0.3)",
+    overflow: "hidden",
   },
-  testHeader: {
+  supportGlow: {
+    position: "absolute",
+    top: -20,
+    right: -20,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#c9923a",
+    opacity: 0.07,
+  },
+  supportContent: {
     flexDirection: "row",
     alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 12,
+    gap: 16,
+    padding: 20,
+    paddingBottom: 14,
   },
-  hideBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "#1a0f00",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 0.5,
-    borderColor: "rgba(201, 146, 58, 0.15)",
+  supportHebrew: { fontSize: 22, color: "#c9923a", lineHeight: 28 },
+  supportTitle: {
+    fontSize: 16,
+    color: "#f5d49a",
+    fontWeight: "700",
+    marginBottom: 5,
   },
-  testBtn: {
+  supportSub: {
+    fontSize: 12,
+    color: "rgba(245, 212, 154, 0.5)",
+    lineHeight: 18,
+  },
+  supportFooter: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     backgroundColor: "#c9923a",
-    borderRadius: 8,
-    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    paddingVertical: 13,
   },
-  testBtnSent: {
-    backgroundColor: "#f5d49a",
-  },
-  testBtnText: {
+  supportCta: {
     fontSize: 13,
     color: "#1a0f00",
-    fontWeight: "700",
+    fontWeight: "800",
+    letterSpacing: 1.5,
   },
-  infoRow: {
+
+  feedbackRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 16,
+    gap: 14,
   },
-  infoKey: {
-    fontSize: 13,
-    color: "rgba(245, 212, 154, 0.5)",
-  },
-  infoVal: {
-    fontSize: 13,
-    color: "#f5d49a",
-    fontWeight: "600",
-  },
-  verseCard: {
-    backgroundColor: "#120900",
-    borderRadius: 12,
-    padding: 20,
+  feedbackIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: "rgba(201, 146, 58, 0.08)",
     borderWidth: 0.5,
-    borderColor: "rgba(201, 146, 58, 0.1)",
+    borderColor: "rgba(201, 146, 58, 0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  feedbackTitle: { fontSize: 14, color: "#f5d49a", fontWeight: "500" },
+  feedbackSub: { fontSize: 11, color: "#5a3e1b", marginTop: 2 },
+
+  verseCard: {
+    backgroundColor: "#0d0700",
+    borderRadius: 14,
+    padding: 22,
+    borderWidth: 0.5,
+    borderColor: "rgba(201, 146, 58, 0.08)",
     gap: 8,
+    marginTop: 6,
   },
   verseText: {
-    fontSize: 13,
-    color: "rgba(201, 146, 58, 0.5)",
+    fontSize: 12,
+    color: "rgba(201, 146, 58, 0.35)",
     fontStyle: "italic",
-    lineHeight: 22,
+    lineHeight: 21,
     textAlign: "center",
   },
-  verseBold: {
-    color: "#c9923a",
-    fontWeight: "700",
-  },
+  verseBold: { color: "rgba(201, 146, 58, 0.65)", fontWeight: "700" },
   verseRef: {
-    fontSize: 11,
-    color: "#3d2500",
+    fontSize: 10,
+    color: "#2d1800",
     letterSpacing: 2,
     textAlign: "center",
     textTransform: "uppercase",

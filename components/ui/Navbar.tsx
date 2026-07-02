@@ -1,17 +1,8 @@
+import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import React from "react";
-import { Dimensions, Text, TouchableOpacity, View, StyleSheet } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-
-const { width } = Dimensions.get("window");
-const isSmallDevice = width < 375;
-const isTablet = width >= 768;
-const scale = (size: number) => {
-  if (isTablet) return size * 1.2;
-  if (isSmallDevice) return size * 0.85;
-  return size;
-};
 
 const tabs = [
   {
@@ -50,10 +41,18 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isSmallDevice = width < 375;
+  const isTablet = width >= 768;
+  const scale = (size: number) => {
+    if (isTablet) return size * 1.2;
+    if (isSmallDevice) return size * 0.85;
+    return size;
+  };
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom + 8 }]}>
-      <View style={[styles.row, { height: scale(64) }]}>
+    <View style={[styles.container, { paddingBottom: insets.bottom + 8, width }]}>
+      <View style={[styles.row, { height: scale(64), width }]}>
         {tabs.map(({ label, route, icon, iconActive }) => {
           const isActive = pathname === route;
           return (
@@ -94,7 +93,6 @@ const styles = StyleSheet.create({
   container: {
     position: "absolute",
     bottom: 0,
-    width,
     backgroundColor: "#120900",
     borderTopWidth: 1,
     borderTopColor: "rgba(201, 146, 58, 0.2)",
@@ -103,7 +101,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    paddingHorizontal: scale(4),
+    paddingHorizontal: 4,
   },
   tab: {
     flex: 1,
@@ -118,7 +116,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   label: {
-    fontSize: scale(8),
+    fontSize: 8,
     fontWeight: "700",
     letterSpacing: 0.5,
   },

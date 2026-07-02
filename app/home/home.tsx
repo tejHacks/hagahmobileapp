@@ -22,19 +22,48 @@ import { isBookmarked, toggleBookmark } from "../../utils/bookmarks";
 
 const TOTAL_READS = 5;
 const SOUND_FILES = [
-  { id: 1, title: "Golden Dawn", file: require("../../assets/sounds/atlasaudio-ambient-atmosphere-511882.mp3") },
-  { id: 2, title: "Peaceful Harbor", file: require("../../assets/sounds/denis-pavlov-music-beautiful-worship-piano-peaceful-music-240319.mp3") },
-  { id: 3, title: "Cedar Rest", file: require("../../assets/sounds/desifreemusic-heart-of-faith-spiritual-oud-amp-ambient-pads-459631.mp3") },
-  { id: 4, title: "Still Waters", file: require("../../assets/sounds/jessequinn-peaceful-piano-soaking-instrumental-worship-track-loops-223094.mp3") },
-  { id: 5, title: "Holy Quiet", file: require("../../assets/sounds/samuelfjohanns-deep-soft-ambient-cue-276821.mp3") },
-  { id: 6, title: "Autumn Mercy", file: require("../../assets/sounds/soundreality-autumn-ambient-420193.mp3") },
-  { id: 7, title: "Mountain Breath", file: require("../../assets/sounds/the_mountain-spiritual-meditation-444137.mp3") },
+  {
+    id: 1,
+    title: "Golden Dawn",
+    file: require("../../assets/audio/atlasaudio-ambient-atmosphere-511882.m4a"),
+  },
+  {
+    id: 2,
+    title: "Peaceful Harbor",
+    file: require("../../assets/audio/denis-pavlov-music-beautiful-worship-piano-peaceful-music-240319.m4a"),
+  },
+  {
+    id: 3,
+    title: "Cedar Rest",
+    file: require("../../assets/audio/desifreemusic-heart-of-faith-spiritual-oud-amp-ambient-pads-459631.m4a"),
+  },
+  {
+    id: 4,
+    title: "Still Waters",
+    file: require("../../assets/audio/jessequinn-peaceful-piano-soaking-instrumental-worship-track-loops-223094.m4a"),
+  },
+  {
+    id: 5,
+    title: "Holy Quiet",
+    file: require("../../assets/audio/samuelfjohanns-deep-soft-ambient-cue-276821.m4a"),
+  },
+  {
+    id: 6,
+    title: "Autumn Mercy",
+    file: require("../../assets/audio/soundreality-autumn-ambient-420193.m4a"),
+  },
+  {
+    id: 7,
+    title: "Mountain Breath",
+    file: require("../../assets/audio/the_mountain-spiritual-meditation-444137.m4a"),
+  },
 ];
 
 function getDailyDeclaration(dayOffset = 0) {
   const start = new Date("2026-01-01").getTime();
   const now = new Date().getTime();
-  const dayIndex = Math.floor((now - start) / (1000 * 60 * 60 * 24)) + dayOffset;
+  const dayIndex =
+    Math.floor((now - start) / (1000 * 60 * 60 * 24)) + dayOffset;
   return declarations[dayIndex % declarations.length];
 }
 
@@ -42,13 +71,23 @@ function getDailyDeclaration(dayOffset = 0) {
 function getDisplayDate(dayOffset: number) {
   const d = new Date();
   d.setDate(d.getDate() - dayOffset);
-  return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 export default function HomeScreen() {
   const [displayDayOffset, setDisplayDayOffset] = useState(0);
-  const daily = useMemo(() => getDailyDeclaration(displayDayOffset), [displayDayOffset]);
-  const dateLabel = useMemo(() => getDisplayDate(displayDayOffset), [displayDayOffset]);
+  const daily = useMemo(
+    () => getDailyDeclaration(displayDayOffset),
+    [displayDayOffset],
+  );
+  const dateLabel = useMemo(
+    () => getDisplayDate(displayDayOffset),
+    [displayDayOffset],
+  );
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentRead, setCurrentRead] = useState(0);
@@ -60,11 +99,14 @@ export default function HomeScreen() {
   const soundRef = useRef<Audio.Sound | null>(null);
   const pulse = useRef(new Animated.Value(1)).current;
   const musicPulse = useRef(new Animated.Value(1)).current;
+  const isMountedRef = useRef(true);
 
   const fullSpeechText = `${daily.ref}. ${daily.scripture}. Today's declaration. ${daily.declaration}`;
   const combinedText = `${daily.ref}\n"${daily.scripture}"\n\nToday's Declaration:\n${daily.declaration}`;
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     (async () => {
       try {
         await setAudioModeAsync({
@@ -78,73 +120,126 @@ export default function HomeScreen() {
     })();
 
     return () => {
+      isMountedRef.current = false;
       Speech.stop();
+      void (async () => {
+        if (soundRef.current) {
+          const currentSound = soundRef.current;
+          soundRef.current = null;
+          try {
+            await currentSound.stopAsync();
+          } catch {}
+          try {
+            await currentSound.unloadAsync();
+          } catch {}
+        }
+      })();
     };
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadBookmark = async () => {
       const isFav = await isBookmarked(daily.id);
-      setBookmarked(isFav);
+      if (!cancelled && isMountedRef.current) {
+        setBookmarked(isFav);
+      }
     };
-    loadBookmark();
+
+    void loadBookmark();
+
+    return () => {
+      cancelled = true;
+    };
   }, [daily.id]);
 
   useEffect(() => {
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (soundPlaying) {
-      const pulseLoop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(musicPulse, { toValue: 1.08, duration: 800, useNativeDriver: true }),
-          Animated.timing(musicPulse, { toValue: 1, duration: 800, useNativeDriver: true }),
-        ])
-      );
-      pulseLoop.start();
-      return () => pulseLoop.stop();
-    } else {
+    if (!soundPlaying) {
       musicPulse.setValue(1);
+      return;
     }
+
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(musicPulse, {
+          toValue: 1.08,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(musicPulse, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    pulseLoop.start();
+
+    return () => {
+      pulseLoop.stop();
+      musicPulse.setValue(1);
+    };
   }, [musicPulse, soundPlaying]);
 
   useEffect(() => {
-    if (isPlaying) {
-      const pulseLoop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulse, { toValue: 1.08, duration: 800, useNativeDriver: true }),
-          Animated.timing(pulse, { toValue: 1, duration: 800, useNativeDriver: true }),
-        ])
-      );
-      pulseLoop.start();
-      return () => pulseLoop.stop();
-    } else {
+    if (!isPlaying) {
       pulse.setValue(1);
+      return;
     }
+
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1.08,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    pulseLoop.start();
+
+    return () => {
+      pulseLoop.stop();
+      pulse.setValue(1);
+    };
   }, [isPlaying, pulse]);
 
   const readNext = (count: number) => {
     if (count > TOTAL_READS) {
-      setIsPlaying(false);
-      setCurrentRead(0);
+      if (isMountedRef.current) {
+        setIsPlaying(false);
+        setCurrentRead(0);
+      }
       return;
     }
+
+    if (!isMountedRef.current) return;
+
     setCurrentRead(count);
     Speech.speak(fullSpeechText, {
       rate: 0.92,
-      onDone: () => readNext(count + 1),
+      onDone: () => {
+        if (isMountedRef.current) {
+          readNext(count + 1);
+        }
+      },
       onStopped: () => {
-        setIsPlaying(false);
-        setCurrentRead(0);
+        if (isMountedRef.current) {
+          setIsPlaying(false);
+          setCurrentRead(0);
+        }
       },
       onError: () => {
-        setIsPlaying(false);
-        setCurrentRead(0);
+        if (isMountedRef.current) {
+          setIsPlaying(false);
+          setCurrentRead(0);
+        }
       },
     });
   };
@@ -152,14 +247,25 @@ export default function HomeScreen() {
   const handleTogglePlay = () => {
     if (isPlaying) {
       Speech.stop();
-      setIsPlaying(false);
-      setCurrentRead(0);
+      if (isMountedRef.current) {
+        setIsPlaying(false);
+        setCurrentRead(0);
+      }
       return;
     }
+
+    if (!isMountedRef.current) return;
+
     setIsPlaying(true);
     Speech.speak(
       "Let's meditate on this together. I'll read it to you five times — say it out loud with me each time.",
-      { onDone: () => readNext(1) }
+      {
+        onDone: () => {
+          if (isMountedRef.current) {
+            readNext(1);
+          }
+        },
+      },
     );
   };
 
@@ -192,7 +298,10 @@ export default function HomeScreen() {
       const selected = SOUND_FILES.find((sound) => sound.id === soundId);
       if (!selected) return;
 
-      const { sound } = await Audio.Sound.createAsync(selected.file, { shouldPlay: true, isLooping: true });
+      const { sound } = await Audio.Sound.createAsync(selected.file, {
+        shouldPlay: true,
+        isLooping: true,
+      });
       soundRef.current = sound;
       setActiveSound(soundId);
       setSoundPlaying(true);
@@ -228,12 +337,18 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
+    <SafeAreaView
+      style={styles.safe}
+      edges={["top", "left", "right", "bottom"]}
+    >
       <View style={styles.header}>
         <Text style={styles.headerLogo}>✦ HAGAH</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
         <LinearGradient
           colors={["#241405", "#0d0700"]}
           start={{ x: 0, y: 0 }}
@@ -241,7 +356,11 @@ export default function HomeScreen() {
           style={styles.card}
         >
           <View style={styles.dayNavRow}>
-            <TouchableOpacity style={styles.dayNavBtn} onPress={handlePreviousDay} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.dayNavBtn}
+              onPress={handlePreviousDay}
+              activeOpacity={0.7}
+            >
               <Ionicons name="chevron-back" size={16} color="#c9923a" />
             </TouchableOpacity>
 
@@ -251,16 +370,25 @@ export default function HomeScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.dayNavBtn, !canGoForward && styles.dayNavBtnDisabled]}
+              style={[
+                styles.dayNavBtn,
+                !canGoForward && styles.dayNavBtnDisabled,
+              ]}
               onPress={handleNextDay}
               activeOpacity={canGoForward ? 0.7 : 1}
               disabled={!canGoForward}
             >
-              <Ionicons name="chevron-forward" size={16} color={canGoForward ? "#c9923a" : "#3a2a10"} />
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={canGoForward ? "#c9923a" : "#3a2a10"}
+              />
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.scriptureText}>&quot;{daily.scripture}&quot;</Text>
+          <Text style={styles.scriptureText}>
+            &quot;{daily.scripture}&quot;
+          </Text>
 
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
@@ -277,42 +405,7 @@ export default function HomeScreen() {
             </Text>
           )}
 
-          <View style={styles.controlRow}>
-            <Animated.View style={{ transform: [{ scale: musicPulse }] }}>
-              <TouchableOpacity style={styles.smallBtn} onPress={() => setShowSounds(true)} activeOpacity={0.7}>
-                <View style={[styles.smallCircle, soundPlaying && styles.smallCircleActive]}>
-                  <Ionicons
-                    name={soundPlaying ? "musical-notes" : "musical-note-outline"}
-                    size={17}
-                    color={soundPlaying ? "#1a0f00" : "#c9923a"}
-                  />
-                </View>
-                <Text style={styles.smallBtnLabel}>{soundPlaying ? "Playing" : "Sounds"}</Text>
-              </TouchableOpacity>
-            </Animated.View>
-
-            <TouchableOpacity style={styles.smallBtn} onPress={handleToggleBookmark} activeOpacity={0.7}>
-              <View style={[styles.smallCircle, bookmarked && styles.smallCircleActive]}>
-                <Ionicons
-                  name={bookmarked ? "bookmark" : "bookmark-outline"}
-                  size={17}
-                  color={bookmarked ? "#1a0f00" : "#c9923a"}
-                />
-              </View>
-              <Text style={styles.smallBtnLabel}>{bookmarked ? "Saved" : "Save"}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.smallBtn} onPress={handleCopy} activeOpacity={0.7}>
-              <View style={[styles.smallCircle, copied && styles.smallCircleActive]}>
-                <Ionicons
-                  name={copied ? "checkmark" : "copy-outline"}
-                  size={17}
-                  color={copied ? "#1a0f00" : "#c9923a"}
-                />
-              </View>
-              <Text style={styles.smallBtnLabel}>{copied ? "Copied" : "Copy"}</Text>
-            </TouchableOpacity>
-
+          <View style={styles.playRow}>
             <Animated.View style={{ transform: [{ scale: pulse }] }}>
               <TouchableOpacity
                 style={[styles.playBtn, isPlaying && styles.playBtnActive]}
@@ -326,8 +419,81 @@ export default function HomeScreen() {
                 />
               </TouchableOpacity>
             </Animated.View>
+          </View>
 
-            <TouchableOpacity style={styles.smallBtn} onPress={handleShare} activeOpacity={0.7}>
+          <View style={styles.controlRow}>
+            <Animated.View style={{ transform: [{ scale: musicPulse }] }}>
+              <TouchableOpacity
+                style={styles.smallBtn}
+                onPress={() => setShowSounds(true)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.smallCircle,
+                    soundPlaying && styles.smallCircleActive,
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      soundPlaying ? "musical-notes" : "musical-note-outline"
+                    }
+                    size={17}
+                    color={soundPlaying ? "#1a0f00" : "#c9923a"}
+                  />
+                </View>
+                <Text style={styles.smallBtnLabel}>
+                  {soundPlaying ? "Playing" : "Sounds"}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
+
+            <TouchableOpacity
+              style={styles.smallBtn}
+              onPress={handleToggleBookmark}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[
+                  styles.smallCircle,
+                  bookmarked && styles.smallCircleActive,
+                ]}
+              >
+                <Ionicons
+                  name={bookmarked ? "bookmark" : "bookmark-outline"}
+                  size={17}
+                  color={bookmarked ? "#1a0f00" : "#c9923a"}
+                />
+              </View>
+              <Text style={styles.smallBtnLabel}>
+                {bookmarked ? "Saved" : "Save"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.smallBtn}
+              onPress={handleCopy}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[styles.smallCircle, copied && styles.smallCircleActive]}
+              >
+                <Ionicons
+                  name={copied ? "checkmark" : "copy-outline"}
+                  size={17}
+                  color={copied ? "#1a0f00" : "#c9923a"}
+                />
+              </View>
+              <Text style={styles.smallBtnLabel}>
+                {copied ? "Copied" : "Copy"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.smallBtn}
+              onPress={handleShare}
+              activeOpacity={0.7}
+            >
               <View style={styles.smallCircle}>
                 <Ionicons name="share-outline" size={17} color="#c9923a" />
               </View>
@@ -336,39 +502,72 @@ export default function HomeScreen() {
           </View>
 
           <Text style={styles.playHint}>
-            {isPlaying ? "Tap to stop" : "Tap to meditate · say it out loud, 5x"}
+            {isPlaying
+              ? "Tap to stop"
+              : "Tap to meditate · say it out loud, 5x"}
           </Text>
         </LinearGradient>
 
-        <Modal visible={showSounds} transparent animationType="slide" onRequestClose={() => setShowSounds(false)}>
+        <Modal
+          visible={showSounds}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowSounds(false)}
+        >
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Ambient Sounds</Text>
-                <TouchableOpacity onPress={() => setShowSounds(false)} activeOpacity={0.8}>
+                <TouchableOpacity
+                  onPress={() => setShowSounds(false)}
+                  activeOpacity={0.8}
+                >
                   <Ionicons name="close" size={20} color="#f5d49a" />
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.modalSubtitle}>Choose a sound to rest in the presence of God.</Text>
+              <Text style={styles.modalSubtitle}>
+                Choose a sound to rest in the presence of God.
+              </Text>
 
               {SOUND_FILES.map((sound) => (
                 <TouchableOpacity
                   key={sound.id}
-                  style={[styles.soundRow, activeSound === sound.id && styles.soundRowActive]}
+                  style={[
+                    styles.soundRow,
+                    activeSound === sound.id && styles.soundRowActive,
+                  ]}
                   onPress={() => handleSoundSelect(sound.id)}
                   activeOpacity={0.85}
                 >
                   <View style={styles.soundLabelGroup}>
-                    <Ionicons name={activeSound === sound.id ? "musical-notes" : "volume-high-outline"} size={16} color="#f5d49a" />
+                    <Ionicons
+                      name={
+                        activeSound === sound.id
+                          ? "musical-notes"
+                          : "volume-high-outline"
+                      }
+                      size={16}
+                      color="#f5d49a"
+                    />
                     <Text style={styles.soundName}>{sound.title}</Text>
                   </View>
-                  <Text style={styles.soundHint}>{activeSound === sound.id && soundPlaying ? "Playing" : "Open"}</Text>
+                  <Text style={styles.soundHint}>
+                    {activeSound === sound.id && soundPlaying
+                      ? "Playing"
+                      : "Open"}
+                  </Text>
                 </TouchableOpacity>
               ))}
 
-              <TouchableOpacity style={styles.modalButton} onPress={handleToggleSound} activeOpacity={0.85}>
-                <Text style={styles.modalButtonText}>{soundPlaying ? "Stop sound" : "Play selected sound"}</Text>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={handleToggleSound}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.modalButtonText}>
+                  {soundPlaying ? "Stop sound" : "Play selected sound"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -493,12 +692,18 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
 
+  playRow: {
+    alignItems: "center",
+    marginTop: 22,
+  },
+
   controlRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 22,
-    paddingHorizontal: 10,
+    justifyContent: "space-around",
+    marginTop: 18,
+    paddingHorizontal: 6,
+    flexWrap: "wrap",
   },
 
   smallBtn: {
