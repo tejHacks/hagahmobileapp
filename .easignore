@@ -1,0 +1,8 @@
+cat > .easignore << 'EOF'
+node_modules/
+.git/
+android/
+ios/
+*.log
+.expo/
+EOF

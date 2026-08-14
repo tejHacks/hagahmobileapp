@@ -1,0 +1,398 @@
+[
+{
+"id": "Gen",
+"name": "Genesis",
+"chapters": 50,
+"versesLoaded": 1533
+},
+{
+"id": "Exo",
+"name": "Exodus",
+"chapters": 40,
+"versesLoaded": 1213
+},
+{
+"id": "Lev",
+"name": "Leviticus",
+"chapters": 27,
+"versesLoaded": 859
+},
+{
+"id": "Num",
+"name": "Numbers",
+"chapters": 36,
+"versesLoaded": 1288
+},
+{
+"id": "Deu",
+"name": "Deuteronomy",
+"chapters": 34,
+"versesLoaded": 959
+},
+{
+"id": "Jos",
+"name": "Joshua",
+"chapters": 24,
+"versesLoaded": 658
+},
+{
+"id": "Jdg",
+"name": "Judges",
+"chapters": 21,
+"versesLoaded": 618
+},
+{
+"id": "Rth",
+"name": "Ruth",
+"chapters": 4,
+"versesLoaded": 85
+},
+{
+"id": "1Sa",
+"name": "1 Samuel",
+"chapters": 31,
+"versesLoaded": 810
+},
+{
+"id": "2Sa",
+"name": "2 Samuel",
+"chapters": 24,
+"versesLoaded": 695
+},
+{
+"id": "1Ki",
+"name": "1 Kings",
+"chapters": 22,
+"versesLoaded": 816
+},
+{
+"id": "2Ki",
+"name": "2 Kings",
+"chapters": 25,
+"versesLoaded": 719
+},
+{
+"id": "1Ch",
+"name": "1 Chronicles",
+"chapters": 29,
+"versesLoaded": 942
+},
+{
+"id": "2Ch",
+"name": "2 Chronicles",
+"chapters": 36,
+"versesLoaded": 822
+},
+{
+"id": "Ezr",
+"name": "Ezra",
+"chapters": 10,
+"versesLoaded": 280
+},
+{
+"id": "Neh",
+"name": "Nehemiah",
+"chapters": 13,
+"versesLoaded": 406
+},
+{
+"id": "Est",
+"name": "Esther",
+"chapters": 10,
+"versesLoaded": 167
+},
+{
+"id": "Job",
+"name": "Job",
+"chapters": 42,
+"versesLoaded": 1070
+},
+{
+"id": "Psa",
+"name": "Psalms",
+"chapters": 150,
+"versesLoaded": 2461
+},
+{
+"id": "Pro",
+"name": "Proverbs",
+"chapters": 31,
+"versesLoaded": 915
+},
+{
+"id": "Ecc",
+"name": "Ecclesiastes",
+"chapters": 12,
+"versesLoaded": 222
+},
+{
+"id": "Sng",
+"name": "Song of Songs",
+"chapters": 8,
+"versesLoaded": 117
+},
+{
+"id": "Isa",
+"name": "Isaiah",
+"chapters": 66,
+"versesLoaded": 1292
+},
+{
+"id": "Jer",
+"name": "Jeremiah",
+"chapters": 52,
+"versesLoaded": 1364
+},
+{
+"id": "Lam",
+"name": "Lamentations",
+"chapters": 5,
+"versesLoaded": 154
+},
+{
+"id": "Eze",
+"name": "Ezekiel",
+"chapters": 48,
+"versesLoaded": 1273
+},
+{
+"id": "Dan",
+"name": "Daniel",
+"chapters": 12,
+"versesLoaded": 357
+},
+{
+"id": "Hos",
+"name": "Hosea",
+"chapters": 14,
+"versesLoaded": 197
+},
+{
+"id": "Joe",
+"name": "Joel",
+"chapters": 3,
+"versesLoaded": 73
+},
+{
+"id": "Amo",
+"name": "Amos",
+"chapters": 9,
+"versesLoaded": 146
+},
+{
+"id": "Oba",
+"name": "Obadiah",
+"chapters": 1,
+"versesLoaded": 21
+},
+{
+"id": "Jon",
+"name": "Jonah",
+"chapters": 4,
+"versesLoaded": 48
+},
+{
+"id": "Mic",
+"name": "Micah",
+"chapters": 7,
+"versesLoaded": 105
+},
+{
+"id": "Nah",
+"name": "Nahum",
+"chapters": 3,
+"versesLoaded": 47
+},
+{
+"id": "Hab",
+"name": "Habakkuk",
+"chapters": 3,
+"versesLoaded": 56
+},
+{
+"id": "Zep",
+"name": "Zephaniah",
+"chapters": 3,
+"versesLoaded": 53
+},
+{
+"id": "Hag",
+"name": "Haggai",
+"chapters": 2,
+"versesLoaded": 38
+},
+{
+"id": "Zec",
+"name": "Zechariah",
+"chapters": 14,
+"versesLoaded": 211
+},
+{
+"id": "Mal",
+"name": "Malachi",
+"chapters": 4,
+"versesLoaded": 55
+},
+{
+"id": "Mat",
+"name": "Matthew",
+"chapters": 28,
+"versesLoaded": 1071
+},
+{
+"id": "Mar",
+"name": "Mark",
+"chapters": 16,
+"versesLoaded": 678
+},
+{
+"id": "Luk",
+"name": "Luke",
+"chapters": 24,
+"versesLoaded": 1151
+},
+{
+"id": "Jhn",
+"name": "John",
+"chapters": 21,
+"versesLoaded": 879
+},
+{
+"id": "Act",
+"name": "Acts",
+"chapters": 28,
+"versesLoaded": 1007
+},
+{
+"id": "Rom",
+"name": "Romans",
+"chapters": 16,
+"versesLoaded": 433
+},
+{
+"id": "1Co",
+"name": "1 Corinthians",
+"chapters": 16,
+"versesLoaded": 437
+},
+{
+"id": "2Co",
+"name": "2 Corinthians",
+"chapters": 13,
+"versesLoaded": 257
+},
+{
+"id": "Gal",
+"name": "Galatians",
+"chapters": 6,
+"versesLoaded": 149
+},
+{
+"id": "Eph",
+"name": "Ephesians",
+"chapters": 6,
+"versesLoaded": 155
+},
+{
+"id": "Phl",
+"name": "Philippians",
+"chapters": 4,
+"versesLoaded": 104
+},
+{
+"id": "Col",
+"name": "Colossians",
+"chapters": 4,
+"versesLoaded": 95
+},
+{
+"id": "1Th",
+"name": "1 Thessalonians",
+"chapters": 5,
+"versesLoaded": 89
+},
+{
+"id": "2Th",
+"name": "2 Thessalonians",
+"chapters": 3,
+"versesLoaded": 47
+},
+{
+"id": "1Ti",
+"name": "1 Timothy",
+"chapters": 6,
+"versesLoaded": 113
+},
+{
+"id": "2Ti",
+"name": "2 Timothy",
+"chapters": 4,
+"versesLoaded": 83
+},
+{
+"id": "Tit",
+"name": "Titus",
+"chapters": 3,
+"versesLoaded": 46
+},
+{
+"id": "Phm",
+"name": "Philemon",
+"chapters": 1,
+"versesLoaded": 104
+},
+{
+"id": "Heb",
+"name": "Hebrews",
+"chapters": 13,
+"versesLoaded": 303
+},
+{
+"id": "Jas",
+"name": "James",
+"chapters": 5,
+"versesLoaded": 108
+},
+{
+"id": "1Pe",
+"name": "1 Peter",
+"chapters": 5,
+"versesLoaded": 105
+},
+{
+"id": "2Pe",
+"name": "2 Peter",
+"chapters": 3,
+"versesLoaded": 61
+},
+{
+"id": "1Jo",
+"name": "1 John",
+"chapters": 5,
+"versesLoaded": 105
+},
+{
+"id": "2Jo",
+"name": "2 John",
+"chapters": 1,
+"versesLoaded": 13
+},
+{
+"id": "3Jo",
+"name": "3 John",
+"chapters": 1,
+"versesLoaded": 14
+},
+{
+"id": "Jde",
+"name": "Jude",
+"chapters": 1,
+"versesLoaded": 25
+},
+{
+"id": "Rev",
+"name": "Revelation",
+"chapters": 22,
+"versesLoaded": 404
+}
+]

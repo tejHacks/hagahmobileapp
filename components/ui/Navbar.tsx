@@ -1,87 +1,173 @@
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
-import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import React, { useMemo } from "react";
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Theme, useTheme } from "../themes/theme";
 
-const tabs = [
+type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
+
+type Tab = {
+  label: string;
+  route: string;
+  icon: IoniconName;
+  activeIcon: IoniconName;
+};
+
+const tabs: Tab[] = [
   {
-    label: "Declare",
+    label: "Home",
     route: "/home/home",
-    icon: "mic-outline",
-    iconActive: "mic",
+    icon: "home-outline",
+    activeIcon: "home",
   },
   {
     label: "War",
     route: "/home/war",
-    icon: "shield-outline",
-    iconActive: "shield",
+    icon: "shield-checkmark-outline",
+    activeIcon: "shield-checkmark",
+  },
+  {
+    label: "Bible",
+    route: "/home/bible",
+    icon: "book-outline",
+    activeIcon: "book",
   },
   {
     label: "Pins",
     route: "/home/pins",
-    icon: "pin-outline",
-    iconActive: "pin",
+    icon: "bookmark-outline",
+    activeIcon: "bookmark",
   },
   {
     label: "Settings",
     route: "/home/settings",
     icon: "settings-outline",
-    iconActive: "settings",
-  },
-  {
-    label: "About",
-    route: "/home/about",
-    icon: "information-circle-outline",
-    iconActive: "information-circle",
+    activeIcon: "settings",
   },
 ];
+
+function isRouteActive(pathname: string, route: string) {
+  return pathname === route || pathname.startsWith(`${route}/`);
+}
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const isSmallDevice = width < 375;
+  const { theme } = useTheme();
+
+  const styles = useMemo(
+    () => createStyles(theme, width),
+    [theme, width],
+  );
+
   const isTablet = width >= 768;
-  const scale = (size: number) => {
-    if (isTablet) return size * 1.2;
-    if (isSmallDevice) return size * 0.85;
-    return size;
-  };
+  const horizontalMargin = isTablet ? 28 : 12;
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom + 8, width }]}>
-      <View style={[styles.row, { height: scale(64), width }]}>
-        {tabs.map(({ label, route, icon, iconActive }) => {
-          const isActive = pathname === route;
+    <View
+      pointerEvents="box-none"
+      style={[
+        styles.wrapper,
+        {
+          bottom: Math.max(insets.bottom, 8) + 8,
+          left: horizontalMargin,
+          right: horizontalMargin,
+        },
+      ]}
+    >
+      <View style={styles.navbar}>
+        {tabs.map((tab) => {
+          const active = isRouteActive(pathname, tab.route);
+          const isBible = tab.label === "Bible";
+
           return (
-            <TouchableOpacity
-              key={label}
-              onPress={() => router.replace(route as any)}
-              style={styles.tab}
-              activeOpacity={0.7}
+            <Pressable
+              key={tab.label}
+              onPress={() => {
+                if (!active) {
+                  router.replace(tab.route as never);
+                }
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={tab.label}
+              accessibilityState={{ selected: active }}
+              style={({ pressed }) => [
+                styles.tab,
+                pressed && styles.tabPressed,
+              ]}
             >
-              <View
-                style={[
-                  styles.indicator,
-                  { backgroundColor: isActive ? "#c9923a" : "transparent" },
-                ]}
-              />
-              <Ionicons
-                name={(isActive ? iconActive : icon) as any}
-                size={scale(20)}
-                color={isActive ? "#c9923a" : "#5a3e1b"}
-              />
-              <Text
-                style={[
-                  styles.label,
-                  { color: isActive ? "#f5d49a" : "#5a3e1b" },
-                ]}
-              >
-                {label.toUpperCase()}
-              </Text>
-            </TouchableOpacity>
+              {isBible ? (
+                <View
+                  style={[
+                    styles.bibleButton,
+                    active && styles.bibleButtonActive,
+                    {
+                      backgroundColor: active
+                        ? theme.colors.accent
+                        : theme.colors.navButton,
+                      borderColor: active
+                        ? theme.colors.accent
+                        : theme.colors.navBorderStrong,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={active ? tab.activeIcon : tab.icon}
+                    size={24}
+                    color={
+                      active
+                        ? theme.colors.onAccent
+                        : theme.colors.textPrimary
+                    }
+                  />
+
+                  {active && <View style={styles.bibleDot} />}
+                </View>
+              ) : (
+                <View
+                  style={[
+                    styles.iconWrap,
+                    active && {
+                      backgroundColor: theme.colors.navActive,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={active ? tab.activeIcon : tab.icon}
+                    size={active ? 21 : 20}
+                    color={
+                      active
+                        ? theme.colors.accent
+                        : theme.colors.textMuted
+                    }
+                  />
+
+                  {active && (
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.activeLabel,
+                        {
+                          color: theme.colors.textPrimary,
+                        },
+                      ]}
+                    >
+                      {tab.label}
+                    </Text>
+                  )}
+                </View>
+              )}
+            </Pressable>
           );
         })}
       </View>
@@ -89,35 +175,105 @@ export default function Navbar() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    position: "absolute",
-    bottom: 0,
-    backgroundColor: "#120900",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(201, 146, 58, 0.2)",
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    paddingHorizontal: 4,
-  },
-  tab: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-  },
-  indicator: {
-    width: 16,
-    height: 2,
-    borderRadius: 1,
-    marginBottom: 2,
-  },
-  label: {
-    fontSize: 8,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-});
+function createStyles(theme: Theme, width: number) {
+  const c = theme.colors;
+  const compact = width < 360;
+
+  return StyleSheet.create({
+    wrapper: {
+      position: "absolute",
+      zIndex: 100,
+      elevation: 20,
+    },
+
+    navbar: {
+      height: compact ? 66 : 72,
+      paddingHorizontal: compact ? 6 : 8,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+
+      backgroundColor: c.navBackground,
+
+      borderWidth: 1,
+      borderColor: c.navBorder,
+      borderRadius: 26,
+
+      shadowColor: c.navShadow,
+      shadowOffset: {
+        width: 0,
+        height: 10,
+      },
+      shadowOpacity: Platform.OS === "ios" ? 0.22 : 0,
+      shadowRadius: 24,
+
+      elevation: Platform.OS === "android" ? 16 : 0,
+    },
+
+    tab: {
+      flex: 1,
+      height: "100%",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    tabPressed: {
+      opacity: 0.72,
+      transform: [{ scale: 0.97 }],
+    },
+
+    iconWrap: {
+      minWidth: compact ? 44 : 50,
+      height: compact ? 44 : 48,
+      paddingHorizontal: 9,
+      borderRadius: 17,
+
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "column",
+    },
+
+    activeLabel: {
+      marginTop: 2,
+      fontSize: compact ? 8 : 9,
+      fontWeight: "700",
+      letterSpacing: 0.15,
+    },
+
+    bibleButton: {
+      width: compact ? 52 : 58,
+      height: compact ? 52 : 58,
+      borderRadius: 29,
+
+      alignItems: "center",
+      justifyContent: "center",
+
+      borderWidth: 1.5,
+
+      shadowColor: c.navShadow,
+      shadowOffset: {
+        width: 0,
+        height: 6,
+      },
+      shadowOpacity: Platform.OS === "ios" ? 0.24 : 0,
+      shadowRadius: 12,
+
+      elevation: Platform.OS === "android" ? 8 : 0,
+    },
+
+    bibleButtonActive: {
+      transform: [{ translateY: -7 }],
+      shadowOpacity: Platform.OS === "ios" ? 0.3 : 0,
+      elevation: Platform.OS === "android" ? 12 : 0,
+    },
+
+    bibleDot: {
+      position: "absolute",
+      bottom: 5,
+      width: 4,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: c.onAccent,
+    },
+  });
+}

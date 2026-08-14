@@ -1,0 +1,2208 @@
+// import { Ionicons } from "@expo/vector-icons";
+// import { setAudioModeAsync } from "expo-audio";
+// import { Audio } from "expo-av";
+// import * as Clipboard from "expo-clipboard";
+// import { LinearGradient } from "expo-linear-gradient";
+// import * as Speech from "expo-speech";
+// import React, { useEffect, useMemo, useRef, useState } from "react";
+// import {
+//   Animated,
+//   Modal,
+//   ScrollView,
+//   Share,
+//   StyleSheet,
+//   Text,
+//   TouchableOpacity,
+//   View,
+// } from "react-native";
+// import { SafeAreaView } from "react-native-safe-area-context";
+// import Navbar from "../../components/ui/Navbar";
+// import { declarations } from "../../data/declarations";
+// import { isBookmarked, toggleBookmark } from "../../utils/bookmarks";
+
+// const TOTAL_READS = 5;
+// const SOUND_FILES = [
+//   {
+//     id: 1,
+//     title: "Golden Dawn",
+//     file: require("../../assets/audio/atlasaudio-ambient-atmosphere-511882.m4a"),
+//   },
+//   {
+//     id: 2,
+//     title: "Peaceful Harbor",
+//     file: require("../../assets/audio/denis-pavlov-music-beautiful-worship-piano-peaceful-music-240319.m4a"),
+//   },
+//   {
+//     id: 3,
+//     title: "Cedar Rest",
+//     file: require("../../assets/audio/desifreemusic-heart-of-faith-spiritual-oud-amp-ambient-pads-459631.m4a"),
+//   },
+//   {
+//     id: 4,
+//     title: "Still Waters",
+//     file: require("../../assets/audio/jessequinn-peaceful-piano-soaking-instrumental-worship-track-loops-223094.m4a"),
+//   },
+//   {
+//     id: 5,
+//     title: "Holy Quiet",
+//     file: require("../../assets/audio/samuelfjohanns-deep-soft-ambient-cue-276821.m4a"),
+//   },
+//   {
+//     id: 6,
+//     title: "Autumn Mercy",
+//     file: require("../../assets/audio/soundreality-autumn-ambient-420193.m4a"),
+//   },
+//   {
+//     id: 7,
+//     title: "Mountain Breath",
+//     file: require("../../assets/audio/the_mountain-spiritual-meditation-444137.m4a"),
+//   },
+// ];
+
+// function getDailyDeclaration(dayOffset = 0) {
+//   const start = new Date("2026-01-01").getTime();
+//   const now = new Date().getTime();
+//   const dayIndex =
+//     Math.floor((now - start) / (1000 * 60 * 60 * 24)) + dayOffset;
+//   return declarations[dayIndex % declarations.length];
+// }
+
+// // "previous" moves backward in real time only — dayOffset is always >= 0
+// function getDisplayDate(dayOffset: number) {
+//   const d = new Date();
+//   d.setDate(d.getDate() - dayOffset);
+//   return d.toLocaleDateString("en-US", {
+//     weekday: "long",
+//     month: "long",
+//     day: "numeric",
+//   });
+// }
+
+// export default function HomeScreen() {
+//   const [displayDayOffset, setDisplayDayOffset] = useState(0);
+//   const daily = useMemo(
+//     () => getDailyDeclaration(displayDayOffset),
+//     [displayDayOffset],
+//   );
+//   const dateLabel = useMemo(
+//     () => getDisplayDate(displayDayOffset),
+//     [displayDayOffset],
+//   );
+
+//   const [isPlaying, setIsPlaying] = useState(false);
+//   const [currentRead, setCurrentRead] = useState(0);
+//   const [copied, setCopied] = useState(false);
+//   const [bookmarked, setBookmarked] = useState(false);
+//   const [showSounds, setShowSounds] = useState(false);
+//   const [activeSound, setActiveSound] = useState<number | null>(null);
+//   const [soundPlaying, setSoundPlaying] = useState(false);
+//   const soundRef = useRef<Audio.Sound | null>(null);
+//   const pulse = useRef(new Animated.Value(1)).current;
+//   const musicPulse = useRef(new Animated.Value(1)).current;
+//   const isMountedRef = useRef(true);
+
+//   const fullSpeechText = `${daily.ref}. ${daily.scripture}. Today's declaration. ${daily.declaration}`;
+//   const combinedText = `${daily.ref}\n"${daily.scripture}"\n\nToday's Declaration:\n${daily.declaration}`;
+
+//   useEffect(() => {
+//     isMountedRef.current = true;
+
+//     (async () => {
+//       try {
+//         await setAudioModeAsync({
+//           playsInSilentMode: true,
+//           shouldPlayInBackground: true,
+//           interruptionMode: "mixWithOthers",
+//         });
+//       } catch (e) {
+//         console.log("Audio mode config skipped:", e);
+//       }
+//     })();
+
+//     return () => {
+//       isMountedRef.current = false;
+//       Speech.stop();
+//       void (async () => {
+//         if (soundRef.current) {
+//           const currentSound = soundRef.current;
+//           soundRef.current = null;
+//           try {
+//             await currentSound.stopAsync();
+//           } catch {}
+//           try {
+//             await currentSound.unloadAsync();
+//           } catch {}
+//         }
+//       })();
+//     };
+//   }, []);
+
+//   useEffect(() => {
+//     let cancelled = false;
+
+//     const loadBookmark = async () => {
+//       const isFav = await isBookmarked(daily.id);
+//       if (!cancelled && isMountedRef.current) {
+//         setBookmarked(isFav);
+//       }
+//     };
+
+//     void loadBookmark();
+
+//     return () => {
+//       cancelled = true;
+//     };
+//   }, [daily.id]);
+
+//   useEffect(() => {
+//     if (!soundPlaying) {
+//       musicPulse.setValue(1);
+//       return;
+//     }
+
+//     const pulseLoop = Animated.loop(
+//       Animated.sequence([
+//         Animated.timing(musicPulse, {
+//           toValue: 1.08,
+//           duration: 800,
+//           useNativeDriver: true,
+//         }),
+//         Animated.timing(musicPulse, {
+//           toValue: 1,
+//           duration: 800,
+//           useNativeDriver: true,
+//         }),
+//       ]),
+//     );
+//     pulseLoop.start();
+
+//     return () => {
+//       pulseLoop.stop();
+//       musicPulse.setValue(1);
+//     };
+//   }, [musicPulse, soundPlaying]);
+
+//   useEffect(() => {
+//     if (!isPlaying) {
+//       pulse.setValue(1);
+//       return;
+//     }
+
+//     const pulseLoop = Animated.loop(
+//       Animated.sequence([
+//         Animated.timing(pulse, {
+//           toValue: 1.08,
+//           duration: 800,
+//           useNativeDriver: true,
+//         }),
+//         Animated.timing(pulse, {
+//           toValue: 1,
+//           duration: 800,
+//           useNativeDriver: true,
+//         }),
+//       ]),
+//     );
+//     pulseLoop.start();
+
+//     return () => {
+//       pulseLoop.stop();
+//       pulse.setValue(1);
+//     };
+//   }, [isPlaying, pulse]);
+
+//   const readNext = (count: number) => {
+//     if (count > TOTAL_READS) {
+//       if (isMountedRef.current) {
+//         setIsPlaying(false);
+//         setCurrentRead(0);
+//       }
+//       return;
+//     }
+
+//     if (!isMountedRef.current) return;
+
+//     setCurrentRead(count);
+//     Speech.speak(fullSpeechText, {
+//       rate: 0.92,
+//       onDone: () => {
+//         if (isMountedRef.current) {
+//           readNext(count + 1);
+//         }
+//       },
+//       onStopped: () => {
+//         if (isMountedRef.current) {
+//           setIsPlaying(false);
+//           setCurrentRead(0);
+//         }
+//       },
+//       onError: () => {
+//         if (isMountedRef.current) {
+//           setIsPlaying(false);
+//           setCurrentRead(0);
+//         }
+//       },
+//     });
+//   };
+
+//   const handleTogglePlay = () => {
+//     if (isPlaying) {
+//       Speech.stop();
+//       if (isMountedRef.current) {
+//         setIsPlaying(false);
+//         setCurrentRead(0);
+//       }
+//       return;
+//     }
+
+//     if (!isMountedRef.current) return;
+
+//     setIsPlaying(true);
+//     Speech.speak(
+//       "Let's meditate on this together. I'll read it to you five times — say it out loud with me each time.",
+//       {
+//         onDone: () => {
+//           if (isMountedRef.current) {
+//             readNext(1);
+//           }
+//         },
+//       },
+//     );
+//   };
+
+//   const handleCopy = async () => {
+//     await Clipboard.setStringAsync(combinedText);
+//     setCopied(true);
+//     setTimeout(() => setCopied(false), 2200);
+//   };
+
+//   const handleShare = async () => {
+//     try {
+//       const shareText = `✦ HAGAH\n\n${combinedText}\n\n— Hagah App`;
+//       await Share.share({ message: shareText });
+//     } catch (error) {
+//       console.log("Share error:", error);
+//     }
+//   };
+
+//   const handleToggleBookmark = async () => {
+//     const newState = await toggleBookmark(daily);
+//     setBookmarked(newState);
+//   };
+
+//   const handleSoundSelect = async (soundId: number) => {
+//     try {
+//       if (soundRef.current) {
+//         await soundRef.current.unloadAsync();
+//         soundRef.current = null;
+//       }
+//       const selected = SOUND_FILES.find((sound) => sound.id === soundId);
+//       if (!selected) return;
+
+//       const { sound } = await Audio.Sound.createAsync(selected.file, {
+//         shouldPlay: true,
+//         isLooping: true,
+//       });
+//       soundRef.current = sound;
+//       setActiveSound(soundId);
+//       setSoundPlaying(true);
+//     } catch (error) {
+//       console.log("Sound play error:", error);
+//     }
+//   };
+
+//   const handleToggleSound = async () => {
+//     if (soundPlaying && soundRef.current) {
+//       await soundRef.current.stopAsync();
+//       await soundRef.current.unloadAsync();
+//       soundRef.current = null;
+//       setSoundPlaying(false);
+//       setActiveSound(null);
+//       return;
+//     }
+//     if (!activeSound) {
+//       setShowSounds(true);
+//       return;
+//     }
+//     await handleSoundSelect(activeSound);
+//   };
+
+//   // Only the past is allowed — dayOffset can only grow, never go below 0 (today)
+//   const handlePreviousDay = () => {
+//     setDisplayDayOffset((value) => value + 1);
+//   };
+//   const canGoForward = displayDayOffset > 0;
+//   const handleNextDay = () => {
+//     if (!canGoForward) return;
+//     setDisplayDayOffset((value) => Math.max(0, value - 1));
+//   };
+
+//   return (
+//     <SafeAreaView
+//       style={styles.safe}
+//       edges={["top", "left", "right", "bottom"]}
+//     >
+//       <View style={styles.header}>
+//         <Text style={styles.headerLogo}>✦ HAGAH</Text>
+//       </View>
+
+//       <ScrollView
+//         contentContainerStyle={styles.scroll}
+//         showsVerticalScrollIndicator={false}
+//       >
+//         <LinearGradient
+//           colors={["#241405", "#0d0700"]}
+//           start={{ x: 0, y: 0 }}
+//           end={{ x: 0, y: 1 }}
+//           style={styles.card}
+//         >
+//           <View style={styles.dayNavRow}>
+//             <TouchableOpacity
+//               style={styles.dayNavBtn}
+//               onPress={handlePreviousDay}
+//               activeOpacity={0.7}
+//             >
+//               <Ionicons name="chevron-back" size={16} color="#c9923a" />
+//             </TouchableOpacity>
+
+//             <View style={styles.dateGroup}>
+//               <Text style={styles.refLabel}>{daily.ref}</Text>
+//               <Text style={styles.dateLabel}>{dateLabel}</Text>
+//             </View>
+
+//             <TouchableOpacity
+//               style={[
+//                 styles.dayNavBtn,
+//                 !canGoForward && styles.dayNavBtnDisabled,
+//               ]}
+//               onPress={handleNextDay}
+//               activeOpacity={canGoForward ? 0.7 : 1}
+//               disabled={!canGoForward}
+//             >
+//               <Ionicons
+//                 name="chevron-forward"
+//                 size={16}
+//                 color={canGoForward ? "#c9923a" : "#3a2a10"}
+//               />
+//             </TouchableOpacity>
+//           </View>
+
+//           <Text style={styles.scriptureText}>
+//             &quot;{daily.scripture}&quot;
+//           </Text>
+
+//           <View style={styles.dividerRow}>
+//             <View style={styles.dividerLine} />
+//             <View style={styles.dividerDot} />
+//             <View style={styles.dividerLine} />
+//           </View>
+
+//           <Text style={styles.declLabel}>TODAY&apos;S DECLARATION</Text>
+//           <Text style={styles.declText}>{daily.declaration}</Text>
+
+//           {isPlaying && (
+//             <Text style={styles.readingText}>
+//               Meditating · {currentRead} of {TOTAL_READS}
+//             </Text>
+//           )}
+
+//           <View style={styles.playRow}>
+//             <Animated.View style={{ transform: [{ scale: pulse }] }}>
+//               <TouchableOpacity
+//                 style={[styles.playBtn, isPlaying && styles.playBtnActive]}
+//                 onPress={handleTogglePlay}
+//                 activeOpacity={0.85}
+//               >
+//                 <Ionicons
+//                   name={isPlaying ? "pause" : "play"}
+//                   size={28}
+//                   color={isPlaying ? "#1a0f00" : "#c9923a"}
+//                 />
+//               </TouchableOpacity>
+//             </Animated.View>
+//           </View>
+
+//           <View style={styles.controlRow}>
+//             <Animated.View style={{ transform: [{ scale: musicPulse }] }}>
+//               <TouchableOpacity
+//                 style={styles.smallBtn}
+//                 onPress={() => setShowSounds(true)}
+//                 activeOpacity={0.7}
+//               >
+//                 <View
+//                   style={[
+//                     styles.smallCircle,
+//                     soundPlaying && styles.smallCircleActive,
+//                   ]}
+//                 >
+//                   <Ionicons
+//                     name={
+//                       soundPlaying ? "musical-notes" : "musical-note-outline"
+//                     }
+//                     size={17}
+//                     color={soundPlaying ? "#1a0f00" : "#c9923a"}
+//                   />
+//                 </View>
+//                 <Text style={styles.smallBtnLabel}>
+//                   {soundPlaying ? "Playing" : "Sounds"}
+//                 </Text>
+//               </TouchableOpacity>
+//             </Animated.View>
+
+//             <TouchableOpacity
+//               style={styles.smallBtn}
+//               onPress={handleToggleBookmark}
+//               activeOpacity={0.7}
+//             >
+//               <View
+//                 style={[
+//                   styles.smallCircle,
+//                   bookmarked && styles.smallCircleActive,
+//                 ]}
+//               >
+//                 <Ionicons
+//                   name={bookmarked ? "bookmark" : "bookmark-outline"}
+//                   size={17}
+//                   color={bookmarked ? "#1a0f00" : "#c9923a"}
+//                 />
+//               </View>
+//               <Text style={styles.smallBtnLabel}>
+//                 {bookmarked ? "Saved" : "Save"}
+//               </Text>
+//             </TouchableOpacity>
+
+//             <TouchableOpacity
+//               style={styles.smallBtn}
+//               onPress={handleCopy}
+//               activeOpacity={0.7}
+//             >
+//               <View
+//                 style={[styles.smallCircle, copied && styles.smallCircleActive]}
+//               >
+//                 <Ionicons
+//                   name={copied ? "checkmark" : "copy-outline"}
+//                   size={17}
+//                   color={copied ? "#1a0f00" : "#c9923a"}
+//                 />
+//               </View>
+//               <Text style={styles.smallBtnLabel}>
+//                 {copied ? "Copied" : "Copy"}
+//               </Text>
+//             </TouchableOpacity>
+
+//             <TouchableOpacity
+//               style={styles.smallBtn}
+//               onPress={handleShare}
+//               activeOpacity={0.7}
+//             >
+//               <View style={styles.smallCircle}>
+//                 <Ionicons name="share-outline" size={17} color="#c9923a" />
+//               </View>
+//               <Text style={styles.smallBtnLabel}>Share</Text>
+//             </TouchableOpacity>
+//           </View>
+
+//           <Text style={styles.playHint}>
+//             {isPlaying
+//               ? "Tap to stop"
+//               : "Tap to meditate · say it out loud, 5x"}
+//           </Text>
+//         </LinearGradient>
+
+//         <Modal
+//           visible={showSounds}
+//           transparent
+//           animationType="slide"
+//           onRequestClose={() => setShowSounds(false)}
+//         >
+//           <View style={styles.modalOverlay}>
+//             <View style={styles.modalCard}>
+//               <View style={styles.modalHeader}>
+//                 <Text style={styles.modalTitle}>Ambient Sounds</Text>
+//                 <TouchableOpacity
+//                   onPress={() => setShowSounds(false)}
+//                   activeOpacity={0.8}
+//                 >
+//                   <Ionicons name="close" size={20} color="#f5d49a" />
+//                 </TouchableOpacity>
+//               </View>
+
+//               <Text style={styles.modalSubtitle}>
+//                 Choose a sound to rest in the presence of God.
+//               </Text>
+
+//               {SOUND_FILES.map((sound) => (
+//                 <TouchableOpacity
+//                   key={sound.id}
+//                   style={[
+//                     styles.soundRow,
+//                     activeSound === sound.id && styles.soundRowActive,
+//                   ]}
+//                   onPress={() => handleSoundSelect(sound.id)}
+//                   activeOpacity={0.85}
+//                 >
+//                   <View style={styles.soundLabelGroup}>
+//                     <Ionicons
+//                       name={
+//                         activeSound === sound.id
+//                           ? "musical-notes"
+//                           : "volume-high-outline"
+//                       }
+//                       size={16}
+//                       color="#f5d49a"
+//                     />
+//                     <Text style={styles.soundName}>{sound.title}</Text>
+//                   </View>
+//                   <Text style={styles.soundHint}>
+//                     {activeSound === sound.id && soundPlaying
+//                       ? "Playing"
+//                       : "Open"}
+//                   </Text>
+//                 </TouchableOpacity>
+//               ))}
+
+//               <TouchableOpacity
+//                 style={styles.modalButton}
+//                 onPress={handleToggleSound}
+//                 activeOpacity={0.85}
+//               >
+//                 <Text style={styles.modalButtonText}>
+//                   {soundPlaying ? "Stop sound" : "Play selected sound"}
+//                 </Text>
+//               </TouchableOpacity>
+//             </View>
+//           </View>
+//         </Modal>
+
+//         <View style={{ height: 100 }} />
+//       </ScrollView>
+//       <Navbar />
+//     </SafeAreaView>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   safe: { flex: 1, backgroundColor: "#1a0f00" },
+
+//   header: {
+//     paddingHorizontal: 20,
+//     paddingTop: 4,
+//     paddingBottom: 6,
+//   },
+//   headerLogo: {
+//     fontSize: 14,
+//     fontWeight: "700",
+//     color: "#c9923a",
+//     letterSpacing: 4,
+//   },
+
+//   scroll: { paddingHorizontal: 20, paddingTop: 4 },
+
+//   card: {
+//     borderRadius: 18,
+//     padding: 24,
+//     marginTop: 6,
+//     borderWidth: 0.5,
+//     borderColor: "rgba(201, 146, 58, 0.2)",
+//     overflow: "hidden",
+//     shadowColor: "#c9923a",
+//     shadowOpacity: 0.15,
+//     shadowRadius: 20,
+//     shadowOffset: { width: 0, height: 8 },
+//     elevation: 6,
+//   },
+
+//   dayNavRow: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     justifyContent: "space-between",
+//     marginBottom: 10,
+//   },
+//   dayNavBtn: {
+//     width: 34,
+//     height: 34,
+//     borderRadius: 17,
+//     borderWidth: 1,
+//     borderColor: "rgba(201, 146, 58, 0.2)",
+//     alignItems: "center",
+//     justifyContent: "center",
+//     backgroundColor: "rgba(201, 146, 58, 0.08)",
+//   },
+//   dayNavBtnDisabled: {
+//     opacity: 0.35,
+//   },
+//   dateGroup: {
+//     alignItems: "center",
+//     gap: 2,
+//   },
+//   refLabel: {
+//     fontSize: 11,
+//     color: "#c9923a",
+//     letterSpacing: 2.5,
+//     textTransform: "uppercase",
+//     fontWeight: "700",
+//   },
+//   dateLabel: {
+//     fontSize: 10,
+//     color: "rgba(201, 146, 58, 0.55)",
+//     letterSpacing: 1,
+//   },
+//   scriptureText: {
+//     fontSize: 15,
+//     color: "rgba(201, 146, 58, 0.8)",
+//     fontStyle: "italic",
+//     lineHeight: 24,
+//   },
+
+//   dividerRow: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     marginVertical: 22,
+//     gap: 8,
+//   },
+//   dividerLine: {
+//     flex: 1,
+//     height: 1,
+//     backgroundColor: "rgba(201, 146, 58, 0.15)",
+//   },
+//   dividerDot: {
+//     width: 4,
+//     height: 4,
+//     borderRadius: 2,
+//     backgroundColor: "rgba(201, 146, 58, 0.4)",
+//   },
+
+//   declLabel: {
+//     fontSize: 10,
+//     color: "rgba(201, 146, 58, 0.5)",
+//     letterSpacing: 2,
+//     marginBottom: 10,
+//   },
+//   declText: {
+//     fontSize: 18,
+//     color: "#f5d49a",
+//     lineHeight: 29,
+//     fontWeight: "400",
+//   },
+
+//   readingText: {
+//     fontSize: 12,
+//     color: "#c9923a",
+//     letterSpacing: 1,
+//     textAlign: "center",
+//     marginTop: 24,
+//   },
+
+//   playRow: {
+//     alignItems: "center",
+//     marginTop: 22,
+//   },
+
+//   controlRow: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     justifyContent: "space-around",
+//     marginTop: 18,
+//     paddingHorizontal: 6,
+//     flexWrap: "wrap",
+//   },
+
+//   smallBtn: {
+//     alignItems: "center",
+//     gap: 6,
+//     width: 56,
+//   },
+//   smallCircle: {
+//     width: 44,
+//     height: 44,
+//     borderRadius: 22,
+//     backgroundColor: "rgba(201, 146, 58, 0.08)",
+//     borderWidth: 1,
+//     borderColor: "rgba(201, 146, 58, 0.25)",
+//     alignItems: "center",
+//     justifyContent: "center",
+//   },
+//   smallCircleActive: {
+//     backgroundColor: "#c9923a",
+//     borderColor: "#c9923a",
+//   },
+//   smallBtnLabel: {
+//     fontSize: 10,
+//     color: "rgba(201, 146, 58, 0.6)",
+//     fontWeight: "600",
+//   },
+
+//   playBtn: {
+//     width: 72,
+//     height: 72,
+//     borderRadius: 36,
+//     backgroundColor: "rgba(201, 146, 58, 0.18)",
+//     alignItems: "center",
+//     justifyContent: "center",
+//   },
+//   playBtnActive: {
+//     backgroundColor: "#c9923a",
+//   },
+
+//   playHint: {
+//     fontSize: 11,
+//     color: "rgba(201, 146, 58, 0.45)",
+//     textAlign: "center",
+//     marginTop: 16,
+//   },
+
+//   modalOverlay: {
+//     flex: 1,
+//     justifyContent: "flex-end",
+//     backgroundColor: "rgba(10, 6, 2, 0.8)",
+//   },
+//   modalCard: {
+//     backgroundColor: "#241405",
+//     borderTopLeftRadius: 24,
+//     borderTopRightRadius: 24,
+//     padding: 20,
+//     borderWidth: 1,
+//     borderColor: "rgba(201, 146, 58, 0.2)",
+//   },
+//   modalHeader: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     justifyContent: "space-between",
+//     marginBottom: 6,
+//   },
+//   modalTitle: {
+//     color: "#f5d49a",
+//     fontSize: 16,
+//     fontWeight: "700",
+//   },
+//   modalSubtitle: {
+//     color: "rgba(245, 212, 154, 0.7)",
+//     fontSize: 13,
+//     marginBottom: 12,
+//   },
+//   soundRow: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     justifyContent: "space-between",
+//     paddingVertical: 12,
+//     borderBottomWidth: 1,
+//     borderBottomColor: "rgba(201, 146, 58, 0.12)",
+//   },
+//   soundRowActive: {
+//     backgroundColor: "rgba(201, 146, 58, 0.14)",
+//     borderRadius: 10,
+//     paddingHorizontal: 8,
+//   },
+//   soundLabelGroup: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     gap: 8,
+//   },
+//   soundName: {
+//     color: "#f5d49a",
+//     fontSize: 14,
+//     fontWeight: "600",
+//   },
+//   soundHint: {
+//     color: "rgba(245, 212, 154, 0.64)",
+//     fontSize: 12,
+//   },
+//   modalButton: {
+//     marginTop: 14,
+//     borderRadius: 12,
+//     paddingVertical: 12,
+//     alignItems: "center",
+//     backgroundColor: "#c9923a",
+//   },
+//   modalButtonText: {
+//     color: "#1a0f00",
+//     fontWeight: "700",
+//   },
+// });
+
+HOME.TSX ABOVE
+
+
+
+WAR.TSX below
+// import { Ionicons } from "@expo/vector-icons";
+// import AsyncStorage from "@react-native-async-storage/async-storage";
+// import * as Speech from "expo-speech";
+// import React, { useEffect, useRef, useState } from "react";
+// import {
+//   Animated,
+//   KeyboardAvoidingView,
+//   Platform,
+//   ScrollView,
+//   StyleSheet,
+//   Text,
+//   TextInput,
+//   TouchableOpacity,
+//   View,
+// } from "react-native";
+// import { SafeAreaView } from "react-native-safe-area-context";
+// import Navbar from "../../components/ui/Navbar";
+// import { battleCards, type BattleCard } from "../../data/war_declarations";
+
+// const NAME_KEY = "hagah_warrior_name";
+
+// // ── pure helpers — defined outside component so useEffect deps stay clean ──
+// const fadeIn = (val: Animated.Value, duration = 400) =>
+//   Animated.timing(val, { toValue: 1, duration, useNativeDriver: true });
+
+// const fadeOut = (val: Animated.Value, duration = 220) =>
+//   Animated.timing(val, { toValue: 0, duration, useNativeDriver: true });
+
+// export default function WarScreen() {
+//   const [phase, setPhase] = useState<"loading" | "welcome" | "name" | "main">("loading");
+//   const [userName, setUserName] = useState("");
+//   const [inputValue, setInputValue] = useState("");
+//   const [selected, setSelected] = useState<BattleCard>(battleCards[0]);
+//   const [battleIndex, setBattleIndex] = useState(0);
+//   const [speakingTitle, setSpeakingTitle] = useState<string | null>(null);
+
+//   const pageFade = useRef(new Animated.Value(0)).current;
+//   const cardSlide = useRef(new Animated.Value(0)).current;
+//   const cardFade = useRef(new Animated.Value(1)).current;
+
+//   // ── load saved name ──────────────────────────────────────────────────────
+//   useEffect(() => {
+//     (async () => {
+//       const saved = await AsyncStorage.getItem(NAME_KEY);
+//       if (saved) {
+//         setUserName(saved);
+//         setPhase("main");
+//       } else {
+//         setPhase("welcome");
+//       }
+//     })();
+//   }, []);
+
+//   // ── fade in whenever phase changes ───────────────────────────────────────
+//   useEffect(() => {
+//     if (phase === "loading") return;
+//     pageFade.setValue(0);
+//     fadeIn(pageFade, 380).start();
+//   }, [phase, pageFade]);
+
+//   // ── navigation helpers ───────────────────────────────────────────────────
+//   const goToName = () => {
+//     fadeOut(pageFade, 240).start(() => setPhase("name"));
+//   };
+
+//   const saveName = async () => {
+//     const trimmed = inputValue.trim();
+//     if (!trimmed) return;
+//     await AsyncStorage.setItem(NAME_KEY, trimmed);
+//     setUserName(trimmed);
+//     fadeOut(pageFade, 240).start(() => setPhase("main"));
+//   };
+
+//   // ── battle card animation ────────────────────────────────────────────────
+//   const animateBattleSwitch = (newIndex: number) => {
+//     const direction = newIndex > battleIndex ? 40 : -40;
+//     Speech.stop();
+//     setSpeakingTitle(null);
+//     Animated.parallel([
+//       fadeOut(cardFade, 160),
+//       Animated.timing(cardSlide, { toValue: direction, duration: 160, useNativeDriver: true }),
+//     ]).start(() => {
+//       setBattleIndex(newIndex);
+//       setSelected(battleCards[newIndex]);
+//       cardSlide.setValue(-direction);
+//       Animated.parallel([
+//         fadeIn(cardFade, 220),
+//         Animated.timing(cardSlide, { toValue: 0, duration: 220, useNativeDriver: true }),
+//       ]).start();
+//     });
+//   };
+
+//   const goPrev = () => { if (battleIndex > 0) animateBattleSwitch(battleIndex - 1); };
+//   const goNext = () => { if (battleIndex < battleCards.length - 1) animateBattleSwitch(battleIndex + 1); };
+
+//   // ── TTS declare ──────────────────────────────────────────────────────────
+//   const handleDeclare = () => {
+//     if (speakingTitle === selected.title) {
+//       Speech.stop();
+//       setSpeakingTitle(null);
+//       return;
+//     }
+//     Speech.stop();
+//     setSpeakingTitle(selected.title);
+//     const text = `${selected.verse}. ${selected.scripture}. My declaration: ${selected.declaration(userName || "warrior")}`;
+//     Speech.speak(text, {
+//       rate: 0.9,
+//       onDone: () => setSpeakingTitle(null),
+//       onStopped: () => setSpeakingTitle(null),
+//       onError: () => setSpeakingTitle(null),
+//     });
+//   };
+
+//   const isSpeaking = speakingTitle === selected.title;
+
+//   if (phase === "loading") return <View style={styles.safe} />;
+
+//   // ── WELCOME ──────────────────────────────────────────────────────────────
+//   if (phase === "welcome") {
+//     return (
+//       <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
+//         <Animated.View style={[styles.gatePage, { opacity: pageFade }]}>
+//           <View style={styles.gateBadgeWrap}>
+//             <Ionicons name="book" size={30} color="#c9923a" />
+//           </View>
+//           <Text style={styles.gateEyebrow}>WAR WITH THE WORD</Text>
+//           <Text style={styles.gateTitle}>Welcome to{"\n"}the War Room</Text>
+//           <Text style={styles.gateBody}>
+//             This is not a quiet devotional. This is a battlefield.{"\n\n"}
+//             Every struggle you carry — fear, lust, addiction, depression, confusion — has already been answered
+//             by the Word of God. Here you will find that Word, speak it out loud, and let it do what it was sent to do.{"\n\n"}
+//             &quot;So shall my word be that goeth forth out of my mouth: it shall not return unto me void, but it shall
+//             accomplish that which I please.&quot; — Isaiah 55:11
+//           </Text>
+//           <View style={styles.tonguesTip}>
+//             <Ionicons name="flame" size={14} color="#c9923a" style={{ marginRight: 6 }} />
+//             <Text style={styles.tonguesTipText}>
+//               Pray in tongues. Pray in your understanding. Speak God&apos;s Word. Fight until the atmosphere shifts.
+//             </Text>
+//           </View>
+//           <TouchableOpacity style={styles.gateBtn} onPress={goToName} activeOpacity={0.85}>
+//             <Ionicons name="arrow-forward" size={15} color="#1a0f00" style={{ marginRight: 8 }} />
+//             <Text style={styles.gateBtnText}>Enter the war room</Text>
+//           </TouchableOpacity>
+//         </Animated.View>
+//       </SafeAreaView>
+//     );
+//   }
+
+//   // ── NAME ─────────────────────────────────────────────────────────────────
+//   if (phase === "name") {
+//     return (
+//       <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
+//         <KeyboardAvoidingView
+//           style={styles.gatePage}
+//           behavior={Platform.OS === "ios" ? "padding" : undefined}
+//         >
+//           <Animated.View style={[{ width: "100%" }, { opacity: pageFade }]}>
+//             <View style={styles.gateBadgeWrap}>
+//               <Ionicons name="person" size={26} color="#c9923a" />
+//             </View>
+//             <Text style={styles.gateEyebrow}>ONE MORE THING</Text>
+//             <Text style={styles.gateTitle}>Who is going{"\n"}to war?</Text>
+//             <Text style={styles.gateBody}>
+//               Your name will be woven into every declaration — because these words are not generic. They are yours.
+//             </Text>
+//             <TextInput
+//               style={styles.nameInput}
+//               placeholder="Enter your name..."
+//               placeholderTextColor="rgba(201,146,58,0.38)"
+//               value={inputValue}
+//               onChangeText={setInputValue}
+//               autoCapitalize="words"
+//               returnKeyType="done"
+//               onSubmitEditing={saveName}
+//               autoFocus
+//             />
+//             <TouchableOpacity style={styles.gateBtn} onPress={saveName} activeOpacity={0.85}>
+//               <Ionicons name="flash" size={14} color="#1a0f00" style={{ marginRight: 8 }} />
+//               <Text style={styles.gateBtnText}>I&apos;m ready to fight</Text>
+//             </TouchableOpacity>
+//           </Animated.View>
+//         </KeyboardAvoidingView>
+//       </SafeAreaView>
+//     );
+//   }
+
+//   // ── MAIN ─────────────────────────────────────────────────────────────────
+//   return (
+//     <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
+//       <Animated.View style={[{ flex: 1 }, { opacity: pageFade }]}>
+
+//         {/* Header */}
+//         <View style={styles.header}>
+//           <View style={styles.headerLeft}>
+//             <Text style={styles.eyebrow}>WAR WITH THE WORD</Text>
+//             <Text style={styles.title}>Fight with Faith</Text>
+//           </View>
+//           <View style={styles.headerBadge}>
+//             <Ionicons name="book" size={20} color="#c9923a" />
+//           </View>
+//         </View>
+
+//         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+//           {/* Name tag */}
+//           <View style={styles.nameTagRow}>
+//             <Ionicons name="person-circle" size={15} color="#c9923a" />
+//             <Text style={styles.nameTag}>
+//               Fighting as <Text style={styles.nameTagBold}>{userName}</Text>
+//             </Text>
+//             <TouchableOpacity
+//               hitSlop={12}
+//               onPress={() => {
+//                 setInputValue(userName);
+//                 fadeOut(pageFade, 200).start(() => setPhase("name"));
+//               }}
+//             >
+//               <Text style={styles.nameChange}>Change</Text>
+//             </TouchableOpacity>
+//           </View>
+
+//           {/* Hero card */}
+//           <View style={styles.heroCard}>
+//             <Text style={styles.heroEyebrow}>THIS IS NOT A QUIET PLACE</Text>
+//             <Text style={styles.heroTitle}>Some battles are only won out loud</Text>
+//             <Text style={styles.heroBody}>
+//               Whatever has been silently choking you was never stronger than the Word that made you.
+//               Stop absorbing the attack — start firing back.
+//             </Text>
+//             <View style={styles.heroHintRow}>
+//               <Ionicons name="sparkles" size={14} color="#f5d49a" />
+//               <Text style={styles.heroHint}>
+//                 Pray in tongues. Pray in your understanding. Declare the Word. Stand until it breaks.
+//               </Text>
+//             </View>
+//           </View>
+
+//           {/* Section label */}
+//           <View style={styles.sectionHeader}>
+//             <Text style={styles.sectionLabel}>CHOOSE YOUR BATTLE</Text>
+//             <Text style={styles.sectionSub}>
+//               {battleIndex + 1} of {battleCards.length} · use the arrows
+//             </Text>
+//           </View>
+
+//           {/* Battle card */}
+//           <Animated.View
+//             style={[styles.battleCard, { opacity: cardFade, transform: [{ translateX: cardSlide }] }]}
+//           >
+//             <View style={styles.battleIconWrap}>
+//               <View style={[styles.battleIconCircle, isSpeaking && styles.battleIconCircleActive]}>
+//                 <Ionicons
+//                   name={selected.icon as any}
+//                   size={40}
+//                   color={isSpeaking ? "#1a0f00" : "#c9923a"}
+//                 />
+//               </View>
+//             </View>
+
+//             <Text style={styles.battleTitle}>{selected.title}</Text>
+//             <Text style={styles.battleVerse}>{selected.verse}</Text>
+
+//             <View style={styles.battleDivider} />
+
+//             <Text style={styles.battleScriptureLabel}>SCRIPTURE (KJV)</Text>
+//             <Text style={styles.battleScripture}>&quot;{selected.scripture}&quot;</Text>
+
+//             <View style={styles.battleDivider} />
+
+//             <Text style={styles.battleDeclLabel}>YOUR DECLARATION</Text>
+//             <Text style={styles.battleDecl}>{selected.declaration(userName)}</Text>
+
+//             <TouchableOpacity
+//               style={[styles.declareBtn, isSpeaking && styles.declareBtnActive]}
+//               onPress={handleDeclare}
+//               activeOpacity={0.85}
+//             >
+//               <Ionicons
+//                 name={isSpeaking ? "stop" : "mic"}
+//                 size={16}
+//                 color={isSpeaking ? "#1a0f00" : "#f5d49a"}
+//                 style={{ marginRight: 8 }}
+//               />
+//               <Text style={[styles.declareBtnText, isSpeaking && styles.declareBtnTextActive]}>
+//                 {isSpeaking ? "Stop speaking" : "Declare this now"}
+//               </Text>
+//             </TouchableOpacity>
+//           </Animated.View>
+
+//           {/* Prev / Next */}
+//           <View style={styles.navRow}>
+//             <TouchableOpacity
+//               style={[styles.navBtn, battleIndex === 0 && styles.navBtnDisabled]}
+//               onPress={goPrev}
+//               disabled={battleIndex === 0}
+//               activeOpacity={0.75}
+//             >
+//               <Ionicons name="chevron-back" size={16} color={battleIndex === 0 ? "#3a2510" : "#c9923a"} />
+//               <Text style={[styles.navBtnText, battleIndex === 0 && styles.navBtnTextDisabled]}>Previous</Text>
+//             </TouchableOpacity>
+
+//             <Text style={styles.navCount}>{battleIndex + 1} / {battleCards.length}</Text>
+
+//             <TouchableOpacity
+//               style={[styles.navBtn, battleIndex === battleCards.length - 1 && styles.navBtnDisabled]}
+//               onPress={goNext}
+//               disabled={battleIndex === battleCards.length - 1}
+//               activeOpacity={0.75}
+//             >
+//               <Text style={[styles.navBtnText, battleIndex === battleCards.length - 1 && styles.navBtnTextDisabled]}>Next</Text>
+//               <Ionicons name="chevron-forward" size={16} color={battleIndex === battleCards.length - 1 ? "#3a2510" : "#c9923a"} />
+//             </TouchableOpacity>
+//           </View>
+
+//           {/* Pray tip */}
+//           <View style={styles.prayTipRow}>
+//             <Ionicons name="mic" size={13} color="#c9923a" style={{ marginRight: 6 }} />
+//             <Text style={styles.prayTipText}>
+//               Tap &quot;Declare this now&quot; and pray until the Spirit stops — don&apos;t rush it.
+//             </Text>
+//           </View>
+
+//           {/* Tongues card */}
+//           <View style={styles.tonguesCard}>
+//             <View style={styles.tonguesCardRow}>
+//               <Ionicons name="flame" size={15} color="#c9923a" style={{ marginRight: 8 }} />
+//               <Text style={styles.tonguesCardTitle}>Pray in the Spirit</Text>
+//             </View>
+//             <Text style={styles.tonguesCardText}>
+//               Before or after you declare — pray in tongues. Pray in your understanding.
+//               Let the Holy Spirit intercede through you. You are not fighting alone: the Spirit of God
+//               fights with you and through you. Speak until the atmosphere shifts.
+//             </Text>
+//             <Text style={styles.tonguesCardRef}>Romans 8:26 · Jude 1:20 · 1 Corinthians 14:4</Text>
+//           </View>
+
+//           {/* War prayer */}
+//           <View style={styles.warPrayerCard}>
+//             <Text style={styles.warPrayerTitle}>Prayer of war</Text>
+//             <Text style={styles.warPrayerText}>
+//               Father, I stand on Your Word. I will not be ruled by fear, lust, doubt, depression, or any
+//               stronghold of the enemy. Let Your light break every darkness around me. Let Your peace reign.
+//               Let Your will be done in my life, and let every lie be silenced by the truth of Jesus. Amen.
+//             </Text>
+//           </View>
+
+//           <View style={{ height: 120 }} />
+//         </ScrollView>
+//       </Animated.View>
+
+//       <Navbar />
+//     </SafeAreaView>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   safe: { flex: 1, backgroundColor: "#1a0f00" },
+
+//   gatePage: { flex: 1, paddingHorizontal: 28, justifyContent: "center" },
+//   gateBadgeWrap: {
+//     width: 56, height: 56, borderRadius: 28,
+//     backgroundColor: "rgba(201,146,58,0.14)",
+//     alignItems: "center", justifyContent: "center", marginBottom: 22,
+//   },
+//   gateEyebrow: { color: "#c9923a", fontSize: 11, fontWeight: "700", letterSpacing: 2.8, marginBottom: 12 },
+//   gateTitle: { color: "#f5d49a", fontSize: 36, fontWeight: "800", lineHeight: 42, marginBottom: 18 },
+//   gateBody: { color: "#b89a6a", fontSize: 14, lineHeight: 23, marginBottom: 22 },
+//   tonguesTip: {
+//     flexDirection: "row", alignItems: "flex-start",
+//     backgroundColor: "rgba(201,146,58,0.08)",
+//     borderRadius: 12, padding: 12,
+//     borderWidth: 1, borderColor: "rgba(201,146,58,0.18)", marginBottom: 28,
+//   },
+//   tonguesTipText: { color: "#b89a6a", fontSize: 13, lineHeight: 20, flex: 1 },
+//   gateBtn: {
+//     backgroundColor: "#c9923a", borderRadius: 14, paddingVertical: 15,
+//     flexDirection: "row", alignItems: "center", justifyContent: "center",
+//   },
+//   gateBtnText: { color: "#1a0f00", fontWeight: "800", fontSize: 15, letterSpacing: 0.5 },
+//   nameInput: {
+//     backgroundColor: "rgba(201,146,58,0.07)",
+//     borderWidth: 1, borderColor: "rgba(201,146,58,0.28)",
+//     borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
+//     color: "#f5d49a", fontSize: 16, marginBottom: 14,
+//   },
+
+//   header: {
+//     paddingHorizontal: 20, paddingTop: 8, paddingBottom: 10,
+//     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+//   },
+//   headerLeft: { gap: 2 },
+//   eyebrow: { color: "#c9923a", fontSize: 11, fontWeight: "700", letterSpacing: 2.6 },
+//   title: { color: "#f5d49a", fontSize: 24, fontWeight: "800" },
+//   headerBadge: {
+//     width: 40, height: 40, borderRadius: 20,
+//     backgroundColor: "rgba(201,146,58,0.12)",
+//     alignItems: "center", justifyContent: "center",
+//     borderWidth: 1, borderColor: "rgba(201,146,58,0.2)",
+//   },
+
+//   scroll: { flex: 1 },
+//   scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
+
+//   nameTagRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+//   nameTag: { color: "#6b4e28", fontSize: 12, flex: 1 },
+//   nameTagBold: { color: "#c9923a", fontWeight: "700" },
+//   nameChange: { color: "#c9923a", fontSize: 11, fontWeight: "700", letterSpacing: 0.4 },
+
+//   heroCard: {
+//     backgroundColor: "#1e1100", borderRadius: 20, padding: 16,
+//     borderWidth: 1, borderColor: "rgba(201,146,58,0.18)", marginBottom: 16,
+//   },
+//   heroEyebrow: { color: "#c9923a", fontSize: 10, fontWeight: "700", letterSpacing: 2, marginBottom: 7 },
+//   heroTitle: { color: "#f5d49a", fontSize: 19, fontWeight: "800", lineHeight: 26, marginBottom: 8 },
+//   heroBody: { color: "#a07a4a", lineHeight: 21, fontSize: 13, marginBottom: 10 },
+//   heroHintRow: { flexDirection: "row", alignItems: "flex-start", gap: 7 },
+//   heroHint: { color: "#7a5c32", fontSize: 12, flex: 1, lineHeight: 18 },
+
+//   sectionHeader: {
+//     flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12,
+//   },
+//   sectionLabel: { color: "#c9923a", fontSize: 11, fontWeight: "700", letterSpacing: 1.6 },
+//   sectionSub: { color: "#5a3e1b", fontSize: 11 },
+
+//   battleCard: {
+//     backgroundColor: "#1e1100", borderRadius: 22, padding: 22,
+//     borderWidth: 1, borderColor: "rgba(201,146,58,0.28)",
+//     marginBottom: 14, minHeight: 380,
+//   },
+//   battleIconWrap: { alignItems: "center", marginBottom: 12 },
+//   battleIconCircle: {
+//     width: 80, height: 80, borderRadius: 40,
+//     backgroundColor: "rgba(201,146,58,0.1)",
+//     borderWidth: 1.5, borderColor: "rgba(201,146,58,0.3)",
+//     alignItems: "center", justifyContent: "center",
+//   },
+//   battleIconCircleActive: { backgroundColor: "#c9923a", borderColor: "#c9923a" },
+//   battleTitle: { color: "#f5d49a", fontSize: 26, fontWeight: "800", textAlign: "center", marginBottom: 4 },
+//   battleVerse: { color: "#c9923a", fontSize: 12, fontWeight: "600", textAlign: "center", letterSpacing: 1, marginBottom: 14 },
+//   battleDivider: { height: 1, backgroundColor: "rgba(201,146,58,0.12)", marginBottom: 14 },
+//   battleScriptureLabel: { color: "rgba(201,146,58,0.45)", fontSize: 9, fontWeight: "700", letterSpacing: 2, marginBottom: 7 },
+//   battleScripture: { color: "#d4a85c", fontSize: 14, fontStyle: "italic", lineHeight: 22, marginBottom: 14 },
+//   battleDeclLabel: { color: "rgba(201,146,58,0.45)", fontSize: 9, fontWeight: "700", letterSpacing: 2, marginBottom: 7 },
+//   battleDecl: { color: "#e5cda0", fontSize: 15, lineHeight: 24, fontWeight: "500", marginBottom: 20 },
+
+//   declareBtn: {
+//     flexDirection: "row", alignItems: "center", justifyContent: "center",
+//     backgroundColor: "rgba(201,146,58,0.14)", paddingVertical: 14, borderRadius: 14,
+//     borderWidth: 1, borderColor: "rgba(201,146,58,0.25)",
+//   },
+//   declareBtnActive: { backgroundColor: "#c9923a", borderColor: "#c9923a" },
+//   declareBtnText: { color: "#f5d49a", fontSize: 14, fontWeight: "800", letterSpacing: 0.6 },
+//   declareBtnTextActive: { color: "#1a0f00" },
+
+//   navRow: {
+//     flexDirection: "row", alignItems: "center",
+//     justifyContent: "space-between", marginBottom: 18,
+//   },
+//   navBtn: {
+//     flexDirection: "row", alignItems: "center", gap: 4,
+//     paddingHorizontal: 14, paddingVertical: 10,
+//     borderRadius: 10, backgroundColor: "rgba(201,146,58,0.08)",
+//     borderWidth: 1, borderColor: "rgba(201,146,58,0.2)",
+//   },
+//   navBtnDisabled: { opacity: 0.3 },
+//   navBtnText: { color: "#c9923a", fontSize: 13, fontWeight: "700" },
+//   navBtnTextDisabled: { color: "#3a2510" },
+//   navCount: { color: "#5a3e1b", fontSize: 12, fontWeight: "600" },
+
+//   prayTipRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 4, marginBottom: 16 },
+//   prayTipText: { color: "#5a3e1b", fontSize: 12, lineHeight: 18, flex: 1, fontStyle: "italic" },
+
+//   tonguesCard: {
+//     backgroundColor: "#120900", borderRadius: 16, padding: 16,
+//     borderWidth: 1, borderColor: "rgba(201,146,58,0.18)", marginBottom: 12,
+//   },
+//   tonguesCardRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+//   tonguesCardTitle: { color: "#f5d49a", fontSize: 14, fontWeight: "700" },
+//   tonguesCardText: { color: "#7a5c32", lineHeight: 21, fontSize: 13, marginBottom: 8 },
+//   tonguesCardRef: { color: "rgba(201,146,58,0.4)", fontSize: 10, letterSpacing: 1 },
+
+//   warPrayerCard: {
+//     backgroundColor: "#120900", borderRadius: 16, padding: 16,
+//     borderWidth: 1, borderColor: "rgba(201,146,58,0.18)",
+//   },
+//   warPrayerTitle: { color: "#f5d49a", fontSize: 15, fontWeight: "700", marginBottom: 8 },
+//   warPrayerText: { color: "#7a5c32", lineHeight: 22, fontSize: 13 },
+// });
+
+
+
+
+Pins
+// import { Ionicons } from "@expo/vector-icons";
+// import React, { useCallback, useEffect, useState } from "react";
+// import {
+//     ActivityIndicator,
+//     RefreshControl,
+//     ScrollView,
+//     StyleSheet,
+//     Text,
+//     TouchableOpacity,
+//     View,
+// } from "react-native";
+// import { SafeAreaView } from "react-native-safe-area-context";
+// import Navbar from "../../components/ui/Navbar";
+// import { getBookmarks, removeBookmark, type Bookmark } from "../../utils/bookmarks";
+
+// export default function PinsScreen() {
+//     const [pins, setPins] = useState<Bookmark[]>([]);
+//     const [loading, setLoading] = useState(true);
+//     const [refreshing, setRefreshing] = useState(false);
+//     const [expandedId, setExpandedId] = useState<number | null>(null);
+
+//     const loadPins = useCallback(async () => {
+//         try {
+//             const savedPins = await getBookmarks();
+//             setPins(savedPins);
+//         } catch (error) {
+//             console.log("Load pins error:", error);
+//         } finally {
+//             setLoading(false);
+//             setRefreshing(false);
+//         }
+//     }, []);
+
+//     useEffect(() => {
+//         void loadPins();
+//     }, [loadPins]);
+
+//     const handleRemovePin = async (declarationId: number) => {
+//         try {
+//             await removeBookmark(declarationId);
+//             setPins((current) => current.filter((item) => item.declarationId !== declarationId));
+//         } catch (error) {
+//             console.log("Remove pin error:", error);
+//         }
+//     };
+
+//     const toggleExpanded = (pinId: number) => {
+//         setExpandedId((current) => (current === pinId ? null : pinId));
+//     };
+
+//     const formatSavedAt = (value: string) => {
+//         const date = new Date(value);
+//         if (Number.isNaN(date.getTime())) {
+//             return "Saved recently";
+//         }
+
+//         return date.toLocaleString("en-US", {
+//             month: "short",
+//             day: "numeric",
+//             year: "numeric",
+//             hour: "numeric",
+//             minute: "2-digit",
+//         });
+//     };
+
+//     return (
+//         <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
+//             <View style={styles.header}>
+//                 <View>
+//                     <Text style={styles.eyebrow}>SAVED</Text>
+//                     <Text style={styles.title}>Pins</Text>
+//                 </View>
+//                 <View style={styles.countBadge}>
+//                     <Text style={styles.countText}>{pins.length}</Text>
+//                 </View>
+//             </View>
+
+//             {loading ? (
+//                 <View style={styles.loadingBox}>
+//                     <ActivityIndicator size="large" color="#c9923a" />
+//                 </View>
+//             ) : (
+//                 <ScrollView
+//                     style={styles.scroll}
+//                     contentContainerStyle={styles.scrollContent}
+//                     showsVerticalScrollIndicator={false}
+//                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void loadPins(); }} tintColor="#c9923a" colors={["#c9923a"]} />}
+//                 >
+//                     {pins.length === 0 ? (
+//                         <View style={styles.emptyState}>
+//                             <Ionicons name="bookmark-outline" size={34} color="#c9923a" />
+//                             <Text style={styles.emptyTitle}>No saved pins yet</Text>
+//                             <Text style={styles.emptyText}>
+//                                 Tap the bookmark icon on a declaration to keep it here for easy access.
+//                             </Text>
+//                         </View>
+//                     ) : (
+//                         pins.map((pin) => {
+//                             const isExpanded = expandedId === pin.id;
+
+//                             return (
+//                                 <View key={pin.id} style={styles.card}>
+//                                     <TouchableOpacity
+//                                         style={styles.cardHeader}
+//                                         activeOpacity={0.85}
+//                                         onPress={() => toggleExpanded(pin.id)}
+//                                     >
+//                                         <View style={styles.refBlock}>
+//                                             <Text style={styles.refText}>{pin.ref}</Text>
+//                                             <Text style={styles.scriptureText} numberOfLines={isExpanded ? undefined : 2}>
+//                                                 &quot;{pin.scripture}&quot;
+//                                             </Text>
+//                                         </View>
+
+//                                         <View style={styles.cardActions}>
+//                                             <View style={styles.expandBadge}>
+//                                                 <Ionicons
+//                                                     name={isExpanded ? "chevron-up" : "chevron-down"}
+//                                                     size={16}
+//                                                     color="#f5d49a"
+//                                                 />
+//                                             </View>
+
+//                                             <TouchableOpacity
+//                                                 style={styles.removeButton}
+//                                                 onPress={(event) => {
+//                                                     event.stopPropagation();
+//                                                     void handleRemovePin(pin.declarationId);
+//                                                 }}
+//                                                 activeOpacity={0.8}
+//                                             >
+//                                                 <Ionicons name="close" size={16} color="#f5d49a" />
+//                                             </TouchableOpacity>
+//                                         </View>
+//                                     </TouchableOpacity>
+
+//                                     {isExpanded ? (
+//                                         <View style={styles.expandedContent}>
+//                                             <Text style={styles.savedMeta}>Saved on {formatSavedAt(pin.createdAt)}</Text>
+//                                             <Text style={styles.declarationText}>{pin.declaration}</Text>
+//                                         </View>
+//                                     ) : null}
+//                                 </View>
+//                             );
+//                         })
+//                     )}
+
+//                     <View style={styles.spacer} />
+//                 </ScrollView>
+//             )}
+
+//             <Navbar />
+//         </SafeAreaView>
+//     );
+// }
+
+// const styles = StyleSheet.create({
+//     safe: {
+//         flex: 1,
+//         backgroundColor: "#1a0f00",
+//     },
+//     header: {
+//         paddingHorizontal: 20,
+//         paddingTop: 10,
+//         paddingBottom: 14,
+//         flexDirection: "row",
+//         justifyContent: "space-between",
+//         alignItems: "center",
+//     },
+//     eyebrow: {
+//         color: "#c9923a",
+//         fontSize: 12,
+//         fontWeight: "700",
+//         letterSpacing: 2.4,
+//         marginBottom: 4,
+//     },
+//     title: {
+//         color: "#f5d49a",
+//         fontSize: 28,
+//         fontWeight: "700",
+//     },
+//     countBadge: {
+//         backgroundColor: "rgba(201, 146, 58, 0.16)",
+//         borderColor: "rgba(201, 146, 58, 0.35)",
+//         borderWidth: 1,
+//         borderRadius: 999,
+//         paddingHorizontal: 12,
+//         paddingVertical: 6,
+//     },
+//     countText: {
+//         color: "#f5d49a",
+//         fontSize: 14,
+//         fontWeight: "700",
+//     },
+//     scroll: {
+//         flex: 1,
+//     },
+//     scrollContent: {
+//         paddingHorizontal: 16,
+//         paddingBottom: 120,
+//     },
+//     loadingBox: {
+//         flex: 1,
+//         alignItems: "center",
+//         justifyContent: "center",
+//     },
+//     emptyState: {
+//         backgroundColor: "#241405",
+//         borderRadius: 20,
+//         padding: 24,
+//         marginTop: 8,
+//         borderWidth: 1,
+//         borderColor: "rgba(201, 146, 58, 0.2)",
+//         alignItems: "center",
+//     },
+//     emptyTitle: {
+//         marginTop: 10,
+//         color: "#f5d49a",
+//         fontSize: 18,
+//         fontWeight: "700",
+//     },
+//     emptyText: {
+//         marginTop: 8,
+//         color: "#b89a6a",
+//         fontSize: 14,
+//         textAlign: "center",
+//         lineHeight: 20,
+//     },
+//     card: {
+//         backgroundColor: "#241405",
+//         borderRadius: 18,
+//         padding: 16,
+//         marginBottom: 12,
+//         borderWidth: 1,
+//         borderColor: "rgba(201, 146, 58, 0.2)",
+//     },
+//     cardHeader: {
+//         flexDirection: "row",
+//         justifyContent: "space-between",
+//         alignItems: "flex-start",
+//     },
+//     refBlock: {
+//         flex: 1,
+//         paddingRight: 10,
+//     },
+//     refText: {
+//         color: "#c9923a",
+//         fontSize: 12,
+//         fontWeight: "700",
+//         letterSpacing: 1.2,
+//     },
+//     cardActions: {
+//         flexDirection: "row",
+//         alignItems: "center",
+//         gap: 8,
+//     },
+//     expandBadge: {
+//         width: 30,
+//         height: 30,
+//         borderRadius: 15,
+//         alignItems: "center",
+//         justifyContent: "center",
+//         backgroundColor: "rgba(201, 146, 58, 0.14)",
+//     },
+//     removeButton: {
+//         width: 30,
+//         height: 30,
+//         borderRadius: 15,
+//         alignItems: "center",
+//         justifyContent: "center",
+//         backgroundColor: "rgba(201, 146, 58, 0.14)",
+//     },
+//     expandedContent: {
+//         marginTop: 12,
+//         borderTopWidth: 1,
+//         borderTopColor: "rgba(201, 146, 58, 0.16)",
+//         paddingTop: 12,
+//     },
+//     savedMeta: {
+//         color: "#b89a6a",
+//         fontSize: 12,
+//         fontWeight: "600",
+//         marginBottom: 8,
+//     },
+//     scriptureText: {
+//         color: "#f5d49a",
+//         fontSize: 15,
+//         fontStyle: "italic",
+//         lineHeight: 22,
+//         marginBottom: 8,
+//     },
+//     declarationText: {
+//         color: "#e5cda0",
+//         fontSize: 14,
+//         lineHeight: 22,
+//     },
+//     spacer: {
+//         height: 24,
+//     },
+// });
+
+
+
+Settings
+// import { Ionicons } from "@expo/vector-icons";
+// import AsyncStorage from "@react-native-async-storage/async-storage";
+// import React, { useEffect, useState } from "react";
+// import {
+//   Alert,
+//   Linking,
+//   ScrollView,
+//   StyleSheet,
+//   Switch,
+//   Text,
+//   TouchableOpacity,
+//   View,
+// } from "react-native";
+// import { SafeAreaView } from "react-native-safe-area-context";
+
+// import Navbar from "../../components/ui/Navbar";
+// import TimePickerModal, { type Period } from "../../components/ui/TimePickerModal";
+// import {
+//   cancelAllDeclarations,
+//   getScheduledNotifications,
+//   requestNotificationPermission,
+//   scheduleDeclarationsForPeriods,
+//   type ScheduledPeriod,
+// } from "../../utils/notifications";
+
+// // ─── helpers ─────────────────────────────────────────────────────────────────
+
+// function toHour24(chip: number, period: Period): number {
+//   if (period === "morning") return chip === 12 ? 0 : chip;
+//   return chip === 12 ? 12 : chip + 12;
+// }
+
+// function formatTime(chip: number, period: Period): string {
+//   const suffix = period === "morning" ? "AM" : "PM";
+//   return `${chip}:00 ${suffix}`;
+// }
+
+// const KEYS = {
+//   morningChip: "hagah_morning_chip",
+//   afternoonChip: "hagah_afternoon_chip",
+//   eveningChip: "hagah_evening_chip",
+//   notifsOn: "hagah_notifs_on",
+// };
+
+// // ─── component ───────────────────────────────────────────────────────────────
+
+// export default function SettingsScreen() {
+//   const [notificationsOn, setNotificationsOn] = useState(false);
+//   const [loading, setLoading] = useState(false);
+
+//   const [morningChip, setMorningChip] = useState(6);
+//   const [afternoonChip, setAfternoonChip] = useState(12);
+//   const [eveningChip, setEveningChip] = useState(6);
+
+//   const [modalOpen, setModalOpen] = useState(false);
+//   const [activePeriod, setActivePeriod] = useState<Period>("morning");
+
+//   useEffect(() => {
+//     (async () => {
+//       const [mc, ac, ec, no, scheduled] = await Promise.all([
+//         AsyncStorage.getItem(KEYS.morningChip),
+//         AsyncStorage.getItem(KEYS.afternoonChip),
+//         AsyncStorage.getItem(KEYS.eveningChip),
+//         AsyncStorage.getItem(KEYS.notifsOn),
+//         getScheduledNotifications(),
+//       ]);
+//       if (mc) setMorningChip(Number(mc));
+//       if (ac) setAfternoonChip(Number(ac));
+//       if (ec) setEveningChip(Number(ec));
+//       if (no === "true" && scheduled.length > 0) setNotificationsOn(true);
+//     })();
+//   }, []);
+
+//   function buildPeriods(mc = morningChip, ac = afternoonChip, ec = eveningChip): ScheduledPeriod[] {
+//     return [
+//       { period: "morning", hour: toHour24(mc, "morning"), minute: 0 },
+//       { period: "afternoon", hour: toHour24(ac, "afternoon"), minute: 0 },
+//       { period: "evening", hour: toHour24(ec, "evening"), minute: 0 },
+//     ];
+//   }
+
+//   const handleToggle = async (value: boolean) => {
+//     if (value) {
+//       setLoading(true);
+//       const granted = await requestNotificationPermission();
+//       setLoading(false);
+//       if (!granted) {
+//         Alert.alert(
+//           "Permission Required",
+//           "Please enable notifications in your device settings.",
+//           [{ text: "OK" }]
+//         );
+//         return;
+//       }
+//       await scheduleDeclarationsForPeriods(buildPeriods());
+//       setNotificationsOn(true);
+//       await AsyncStorage.setItem(KEYS.notifsOn, "true");
+//     } else {
+//       await cancelAllDeclarations();
+//       setNotificationsOn(false);
+//       await AsyncStorage.setItem(KEYS.notifsOn, "false");
+//     }
+//   };
+
+//   const openPicker = (period: Period) => {
+//     if (!notificationsOn) return;
+//     setActivePeriod(period);
+//     setModalOpen(true);
+//   };
+
+//   const handleConfirm = async (chip: number) => {
+//     let newMc = morningChip;
+//     let newAc = afternoonChip;
+//     let newEc = eveningChip;
+
+//     if (activePeriod === "morning") {
+//       setMorningChip(chip); newMc = chip;
+//       await AsyncStorage.setItem(KEYS.morningChip, String(chip));
+//     } else if (activePeriod === "afternoon") {
+//       setAfternoonChip(chip); newAc = chip;
+//       await AsyncStorage.setItem(KEYS.afternoonChip, String(chip));
+//     } else {
+//       setEveningChip(chip); newEc = chip;
+//       await AsyncStorage.setItem(KEYS.eveningChip, String(chip));
+//     }
+
+//     if (notificationsOn) {
+//       setLoading(true);
+//       await scheduleDeclarationsForPeriods(buildPeriods(newMc, newAc, newEc));
+//       setLoading(false);
+//     }
+//   };
+
+//   const currentChip =
+//     activePeriod === "morning" ? morningChip
+//       : activePeriod === "afternoon" ? afternoonChip
+//         : eveningChip;
+
+//   const PeriodRow = ({
+//     period, label, icon, chip, isFirst,
+//   }: {
+//     period: Period; label: string;
+//     icon: keyof typeof Ionicons.glyphMap;
+//     chip: number; isFirst?: boolean;
+//   }) => {
+//     const disabled = !notificationsOn;
+//     return (
+//       <>
+//         {!isFirst && <View style={styles.divider} />}
+//         <TouchableOpacity
+//           style={[styles.periodRow, disabled && styles.periodRowDisabled]}
+//           onPress={() => openPicker(period)}
+//           activeOpacity={disabled ? 1 : 0.7}
+//           disabled={disabled || loading}
+//         >
+//           <View style={[styles.periodIconWrap, disabled && styles.periodIconWrapDim]}>
+//             <Ionicons name={icon} size={16} color={disabled ? "#3a2510" : "#c9923a"} />
+//           </View>
+//           <Text style={[styles.periodLabel, disabled && styles.dimText]}>{label}</Text>
+//           <View style={styles.periodTimeWrap}>
+//             <Text style={[styles.periodTime, disabled && styles.dimText]}>
+//               {formatTime(chip, period)}
+//             </Text>
+//             {!disabled && (
+//               <Ionicons name="chevron-forward" size={14} color="rgba(201,146,58,0.4)" />
+//             )}
+//           </View>
+//         </TouchableOpacity>
+//       </>
+//     );
+//   };
+
+//   return (
+//     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+//       <View style={styles.topBar}>
+//         <Text style={styles.topTitle}>SETTINGS</Text>
+//       </View>
+
+//       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+
+//         {/* NOTIFICATIONS */}
+//         <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
+//         <View style={styles.card}>
+//           <View style={styles.toggleRow}>
+//             <View style={styles.toggleLeft}>
+//               <View style={styles.toggleIcon}>
+//                 <Ionicons name="notifications-outline" size={17} color="#c9923a" />
+//               </View>
+//               <View>
+//                 <Text style={styles.toggleTitle}>Daily Reminders</Text>
+//                 <Text style={styles.toggleSub}>
+//                   {notificationsOn ? "Reminders are active" : "Tap to enable declarations"}
+//                 </Text>
+//               </View>
+//             </View>
+//             <Switch
+//               value={notificationsOn}
+//               onValueChange={handleToggle}
+//               trackColor={{ false: "#1a0f00", true: "#c9923a" }}
+//               thumbColor={notificationsOn ? "#f5d49a" : "#5a3e1b"}
+//               disabled={loading}
+//             />
+//           </View>
+
+//           <View style={styles.divider} />
+
+//           {!notificationsOn && (
+//             <Text style={styles.disabledHint}>
+//               Enable reminders above to set your times
+//             </Text>
+//           )}
+
+//           <PeriodRow period="morning" label="Morning" icon="sunny-outline" chip={morningChip} isFirst />
+//           <PeriodRow period="afternoon" label="Afternoon" icon="partly-sunny-outline" chip={afternoonChip} />
+//           <PeriodRow period="evening" label="Evening" icon="moon-outline" chip={eveningChip} />
+
+//           {notificationsOn && (
+//             <View style={styles.summaryPill}>
+//               <Ionicons name="checkmark-circle" size={13} color="#c9923a" />
+//               <Text style={styles.summaryText}>
+//                 {"Reminding you at "}
+//                 <Text style={styles.summaryBold}>
+//                   {`${formatTime(morningChip, "morning")}, ${formatTime(afternoonChip, "afternoon")}, ${formatTime(eveningChip, "evening")}`}
+//                 </Text>
+//                 {" daily"}
+//               </Text>
+//             </View>
+//           )}
+//         </View>
+
+//         {/* SUPPORT */}
+//         {/*<Text style={styles.sectionLabel}>SUPPORT HAGAH</Text>*/}
+//         {/*<TouchableOpacity
+//           style={styles.supportCard}
+//           activeOpacity={0.85}
+//           onPress={() => Linking.openURL("https://buymeacoffee.com/tejuhacks")}
+//         >
+//           <View style={styles.supportGlow} />
+//           <View style={styles.supportContent}>
+//             <Text style={styles.supportHebrew}>✦</Text>
+//             <View style={{ flex: 1 }}>
+//               <Text style={styles.supportTitle}>Support Our Work</Text>
+//               <Text style={styles.supportSub}>
+//                 Hagah is built with faith and late nights. If it's been a
+//                 blessing, consider giving so we can keep building.
+//               </Text>
+//             </View>
+//           </View>
+//           <View style={styles.supportFooter}>
+//             <Text style={styles.supportCta}>GIVE NOW</Text>
+//             <Ionicons name="heart" size={13} color="#1a0f00" />
+//           </View>
+//         </TouchableOpacity>*/}
+
+//         {/* FEEDBACK */}
+//         <Text style={styles.sectionLabel}>FEEDBACK</Text>
+//         <View style={styles.card}>
+//           <TouchableOpacity
+//             style={styles.feedbackRow}
+//             activeOpacity={0.7}
+//             onPress={() =>
+//               Linking.openURL("mailto:olateju202@gmail.com?subject=Hagah%20Feedback&body=Hi%20Olateju%2C%0A%0A")
+//             }
+//           >
+//             <View style={styles.feedbackIcon}>
+//               <Ionicons name="mail-outline" size={16} color="#c9923a" />
+//             </View>
+//             <View style={{ flex: 1 }}>
+//               <Text style={styles.feedbackTitle}>Send Feedback</Text>
+//               <Text style={styles.feedbackSub}>olateju202@gmail.com</Text>
+//             </View>
+//             <Ionicons name="arrow-forward" size={15} color="rgba(201,146,58,0.35)" />
+//           </TouchableOpacity>
+
+//           <View style={styles.divider} />
+//           {/*
+//           <TouchableOpacity
+//             style={styles.feedbackRow}
+//             activeOpacity={0.7}
+//             onPress={() =>
+//               Linking.openURL("https://play.google.com/store/apps/details?id=com.tejuhacks.hagah")
+//             }
+//           >
+//             <View style={styles.feedbackIcon}>
+//               <Ionicons name="star-outline" size={16} color="#c9923a" />
+//             </View>
+//             <View style={{ flex: 1 }}>
+//               <Text style={styles.feedbackTitle}>Rate on Play Store</Text>
+//               <Text style={styles.feedbackSub}>A review means the world to us</Text>
+//             </View>
+//             <Ionicons name="arrow-forward" size={15} color="rgba(201,146,58,0.35)" />
+//           </TouchableOpacity>*/}
+
+//           <View style={styles.divider} />
+
+//           <TouchableOpacity
+//             style={styles.feedbackRow}
+//             activeOpacity={0.7}
+//             onPress={() =>
+//               Linking.openURL("mailto:olateju202@gmail.com?subject=Hagah%20Suggestion&body=Hi%2C%20I%20have%20a%20suggestion%3A%0A%0A")
+//             }
+//           >
+//             <View style={styles.feedbackIcon}>
+//               <Ionicons name="bulb-outline" size={16} color="#c9923a" />
+//             </View>
+//             <View style={{ flex: 1 }}>
+//               <Text style={styles.feedbackTitle}>Send a Suggestion</Text>
+//               <Text style={styles.feedbackSub}>Got an idea? We&apos;re listening</Text>
+//             </View>
+//             <Ionicons name="arrow-forward" size={15} color="rgba(201,146,58,0.35)" />
+//           </TouchableOpacity>
+//         </View>
+
+//         {/* Verse footer */}
+//         <View style={styles.verseCard}>
+//           <Text style={styles.verseText}>
+//             {"\"thou shalt "}
+//             <Text style={styles.verseBold}>hagah</Text>
+//             {" therein day and night... for then thou shalt make thy way prosperous.\""}
+//           </Text>
+//           <Text style={styles.verseRef}>Joshua 1:8</Text>
+//         </View>
+
+//         <View style={{ height: 110 }} />
+//       </ScrollView>
+
+//       <TimePickerModal
+//         visible={modalOpen}
+//         period={activePeriod}
+//         currentChip={currentChip}
+//         onConfirm={handleConfirm}
+//         onClose={() => setModalOpen(false)}
+//       />
+
+//       <Navbar />
+//     </SafeAreaView>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   safe: { flex: 1, backgroundColor: "#0d0700" },
+
+//   topBar: {
+//     backgroundColor: "#120900",
+//     borderBottomWidth: 1,
+//     borderBottomColor: "rgba(201, 146, 58, 0.12)",
+//     paddingHorizontal: 22,
+//     paddingVertical: 18,
+//   },
+//   topTitle: {
+//     fontSize: 12,
+//     fontWeight: "700",
+//     color: "#c9923a",
+//     letterSpacing: 4,
+//   },
+
+//   scroll: { paddingHorizontal: 20, paddingTop: 22, gap: 10 },
+
+//   sectionLabel: {
+//     fontSize: 9,
+//     color: "#4a2e10",
+//     letterSpacing: 2.5,
+//     fontWeight: "700",
+//     marginBottom: 6,
+//     marginTop: 10,
+//     paddingHorizontal: 4,
+//   },
+
+//   card: {
+//     backgroundColor: "#1e1100",
+//     borderRadius: 18,
+//     paddingHorizontal: 18,
+//     paddingVertical: 6,
+//     borderWidth: 0.5,
+//     borderColor: "rgba(201, 146, 58, 0.12)",
+//   },
+
+//   divider: {
+//     height: 0.5,
+//     backgroundColor: "rgba(201, 146, 58, 0.08)",
+//   },
+
+//   toggleRow: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     justifyContent: "space-between",
+//     paddingVertical: 16,
+//     gap: 12,
+//   },
+//   toggleLeft: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     gap: 14,
+//     flex: 1,
+//   },
+//   toggleIcon: {
+//     width: 38,
+//     height: 38,
+//     borderRadius: 12,
+//     backgroundColor: "rgba(201, 146, 58, 0.1)",
+//     borderWidth: 0.5,
+//     borderColor: "rgba(201, 146, 58, 0.2)",
+//     alignItems: "center",
+//     justifyContent: "center",
+//   },
+//   toggleTitle: {
+//     fontSize: 15,
+//     color: "#f5d49a",
+//     fontWeight: "600",
+//   },
+//   toggleSub: {
+//     fontSize: 11,
+//     color: "#5a3e1b",
+//     marginTop: 2,
+//   },
+
+//   disabledHint: {
+//     fontSize: 11,
+//     color: "#3a2510",
+//     paddingVertical: 12,
+//     paddingHorizontal: 2,
+//     fontStyle: "italic",
+//   },
+
+//   periodRow: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     paddingVertical: 15,
+//     gap: 14,
+//   },
+//   periodRowDisabled: { opacity: 0.4 },
+//   periodIconWrap: {
+//     width: 34,
+//     height: 34,
+//     borderRadius: 10,
+//     backgroundColor: "rgba(201, 146, 58, 0.08)",
+//     borderWidth: 0.5,
+//     borderColor: "rgba(201, 146, 58, 0.18)",
+//     alignItems: "center",
+//     justifyContent: "center",
+//   },
+//   periodIconWrapDim: {
+//     backgroundColor: "rgba(201, 146, 58, 0.03)",
+//     borderColor: "rgba(201, 146, 58, 0.06)",
+//   },
+//   periodLabel: {
+//     flex: 1,
+//     fontSize: 14,
+//     color: "#f5d49a",
+//     fontWeight: "500",
+//   },
+//   periodTimeWrap: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     gap: 6,
+//   },
+//   periodTime: {
+//     fontSize: 14,
+//     color: "#c9923a",
+//     fontWeight: "700",
+//   },
+//   dimText: { color: "#3a2510" },
+
+//   summaryPill: {
+//     flexDirection: "row",
+//     alignItems: "flex-start",
+//     gap: 8,
+//     backgroundColor: "rgba(201, 146, 58, 0.06)",
+//     borderRadius: 10,
+//     paddingHorizontal: 14,
+//     paddingVertical: 12,
+//     borderWidth: 0.5,
+//     borderColor: "rgba(201, 146, 58, 0.15)",
+//     marginTop: 4,
+//     marginBottom: 6,
+//   },
+//   summaryText: {
+//     fontSize: 12,
+//     color: "rgba(201, 146, 58, 0.6)",
+//     lineHeight: 18,
+//     flex: 1,
+//   },
+//   summaryBold: { color: "#c9923a", fontWeight: "700" },
+
+//   supportCard: {
+//     backgroundColor: "#241405",
+//     borderRadius: 18,
+//     borderWidth: 1,
+//     borderColor: "rgba(201, 146, 58, 0.3)",
+//     overflow: "hidden",
+//   },
+//   supportGlow: {
+//     position: "absolute",
+//     top: -20,
+//     right: -20,
+//     width: 100,
+//     height: 100,
+//     borderRadius: 50,
+//     backgroundColor: "#c9923a",
+//     opacity: 0.07,
+//   },
+//   supportContent: {
+//     flexDirection: "row",
+//     alignItems: "flex-start",
+//     gap: 16,
+//     padding: 20,
+//     paddingBottom: 14,
+//   },
+//   supportHebrew: { fontSize: 22, color: "#c9923a", lineHeight: 28 },
+//   supportTitle: {
+//     fontSize: 16,
+//     color: "#f5d49a",
+//     fontWeight: "700",
+//     marginBottom: 5,
+//   },
+//   supportSub: {
+//     fontSize: 12,
+//     color: "rgba(245, 212, 154, 0.5)",
+//     lineHeight: 18,
+//   },
+//   supportFooter: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     justifyContent: "center",
+//     gap: 8,
+//     backgroundColor: "#c9923a",
+//     marginHorizontal: 16,
+//     marginBottom: 16,
+//     borderRadius: 12,
+//     paddingVertical: 13,
+//   },
+//   supportCta: {
+//     fontSize: 13,
+//     color: "#1a0f00",
+//     fontWeight: "800",
+//     letterSpacing: 1.5,
+//   },
+
+//   feedbackRow: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     paddingVertical: 16,
+//     gap: 14,
+//   },
+//   feedbackIcon: {
+//     width: 34,
+//     height: 34,
+//     borderRadius: 10,
+//     backgroundColor: "rgba(201, 146, 58, 0.08)",
+//     borderWidth: 0.5,
+//     borderColor: "rgba(201, 146, 58, 0.18)",
+//     alignItems: "center",
+//     justifyContent: "center",
+//   },
+//   feedbackTitle: { fontSize: 14, color: "#f5d49a", fontWeight: "500" },
+//   feedbackSub: { fontSize: 11, color: "#5a3e1b", marginTop: 2 },
+
+//   verseCard: {
+//     backgroundColor: "#0d0700",
+//     borderRadius: 14,
+//     padding: 22,
+//     borderWidth: 0.5,
+//     borderColor: "rgba(201, 146, 58, 0.08)",
+//     gap: 8,
+//     marginTop: 6,
+//   },
+//   verseText: {
+//     fontSize: 12,
+//     color: "rgba(201, 146, 58, 0.35)",
+//     fontStyle: "italic",
+//     lineHeight: 21,
+//     textAlign: "center",
+//   },
+//   verseBold: { color: "rgba(201, 146, 58, 0.65)", fontWeight: "700" },
+//   verseRef: {
+//     fontSize: 10,
+//     color: "#2d1800",
+//     letterSpacing: 2,
+//     textAlign: "center",
+//     textTransform: "uppercase",
+//   },
+// });
+
+

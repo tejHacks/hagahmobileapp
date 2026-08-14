@@ -1,15 +1,28 @@
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+let Notifications: typeof import("expo-notifications") | null = null;
+let _handlerSet = false;
+async function getNotifications() {
+  if (!Notifications) {
+    // dynamic import to avoid running expo-notifications module-level
+    // side-effects during app route scanning (Expo Go can error on auto
+    // registration). Import only when notifications are actually used.
+    Notifications = await import("expo-notifications");
+  }
+  if (!_handlerSet) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+    _handlerSet = true;
+  }
+  return Notifications;
+}
 
 export type ScheduledPeriod = {
   period: "morning" | "afternoon" | "evening";
@@ -27,17 +40,18 @@ const PERIOD_MESSAGES: Record<ScheduledPeriod["period"], string> = {
 };
 
 export async function requestNotificationPermission(): Promise<boolean> {
+  const N = await getNotifications();
   if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("hagah-declarations", {
+    await N.setNotificationChannelAsync("hagah-declarations", {
       name: "Daily Declarations",
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: N.AndroidImportance.HIGH,
       sound: "default",
       vibrationPattern: [0, 250, 250, 250],
     });
   }
-  const { status: existing } = await Notifications.getPermissionsAsync();
+  const { status: existing } = await N.getPermissionsAsync();
   if (existing === "granted") return true;
-  const { status } = await Notifications.requestPermissionsAsync();
+  const { status } = await N.requestPermissionsAsync();
   return status === "granted";
 }
 
@@ -47,12 +61,12 @@ export async function scheduleDeclarationsForPeriods(
   try {
     const granted = await requestNotificationPermission();
     if (!granted) return [];
-
     await cancelAllDeclarations();
 
+    const N = await getNotifications();
     const ids: string[] = [];
     for (const slot of periods) {
-      const id = await Notifications.scheduleNotificationAsync({
+      const id = await N.scheduleNotificationAsync({
         content: {
           title: "✦ Time to Hagah",
           body: PERIOD_MESSAGES[slot.period],
@@ -60,7 +74,7 @@ export async function scheduleDeclarationsForPeriods(
           data: { period: slot.period, hour: slot.hour, minute: slot.minute },
         },
         trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          type: N.SchedulableTriggerInputTypes.DAILY,
           hour: slot.hour,
           minute: slot.minute,
         },
@@ -75,11 +89,13 @@ export async function scheduleDeclarationsForPeriods(
 }
 
 export async function cancelAllDeclarations(): Promise<void> {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  const N = await getNotifications();
+  await N.cancelAllScheduledNotificationsAsync();
 }
 
 export async function getScheduledNotifications() {
-  return await Notifications.getAllScheduledNotificationsAsync();
+  const N = await getNotifications();
+  return await N.getAllScheduledNotificationsAsync();
 }
 
 /* Uncomment to test delivery on real device:

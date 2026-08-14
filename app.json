@@ -2,13 +2,14 @@
   "expo": {
     "name": "Hagah",
     "slug": "hagah",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "scheme": "hagah",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
+      "buildNumber": "2",
       "supportsTablet": true,
       "infoPlist": {
         "UIBackgroundModes": [
@@ -17,6 +18,7 @@
       }
     },
     "android": {
+      "versionCode": 3,
       "adaptiveIcon": {
         "backgroundColor": "#1a0f00",
         "foregroundImage": "./assets/images/logo.png"
@@ -27,7 +29,9 @@
       "permissions": [
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-        "WAKE_LOCK"
+        "WAKE_LOCK",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
@@ -71,6 +75,7 @@
       "eas": {
         "projectId": "05381042-b0d2-4190-b128-cf6ab85abcfc"
       }
-    }
+    },
+    "owner": "tejcodes"
   }
 }

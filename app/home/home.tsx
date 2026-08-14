@@ -1,8 +1,10 @@
+
+
+
 import { Ionicons } from "@expo/vector-icons";
 import { setAudioModeAsync } from "expo-audio";
 import { Audio } from "expo-av";
 import * as Clipboard from "expo-clipboard";
-import { LinearGradient } from "expo-linear-gradient";
 import * as Speech from "expo-speech";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -16,11 +18,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Theme, useTheme } from "../../components/themes/theme";
 import Navbar from "../../components/ui/Navbar";
 import { declarations } from "../../data/declarations";
 import { isBookmarked, toggleBookmark } from "../../utils/bookmarks";
 
 const TOTAL_READS = 5;
+const PLAY_STORE_URL =
+  "https://play.google.com/store/apps/details?id=com.olateju.hagahapp";
 const SOUND_FILES = [
   {
     id: 1,
@@ -79,6 +84,9 @@ function getDisplayDate(dayOffset: number) {
 }
 
 export default function HomeScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [displayDayOffset, setDisplayDayOffset] = useState(0);
   const daily = useMemo(
     () => getDailyDeclaration(displayDayOffset),
@@ -98,7 +106,6 @@ export default function HomeScreen() {
   const [soundPlaying, setSoundPlaying] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
   const pulse = useRef(new Animated.Value(1)).current;
-  const musicPulse = useRef(new Animated.Value(1)).current;
   const isMountedRef = useRef(true);
 
   const fullSpeechText = `${daily.ref}. ${daily.scripture}. Today's declaration. ${daily.declaration}`;
@@ -128,10 +135,10 @@ export default function HomeScreen() {
           soundRef.current = null;
           try {
             await currentSound.stopAsync();
-          } catch {}
+          } catch { }
           try {
             await currentSound.unloadAsync();
-          } catch {}
+          } catch { }
         }
       })();
     };
@@ -154,33 +161,6 @@ export default function HomeScreen() {
     };
   }, [daily.id]);
 
-  useEffect(() => {
-    if (!soundPlaying) {
-      musicPulse.setValue(1);
-      return;
-    }
-
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(musicPulse, {
-          toValue: 1.08,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(musicPulse, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    pulseLoop.start();
-
-    return () => {
-      pulseLoop.stop();
-      musicPulse.setValue(1);
-    };
-  }, [musicPulse, soundPlaying]);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -209,6 +189,8 @@ export default function HomeScreen() {
       pulse.setValue(1);
     };
   }, [isPlaying, pulse]);
+
+  // scripture display (no animation)
 
   const readNext = (count: number) => {
     if (count > TOTAL_READS) {
@@ -277,8 +259,23 @@ export default function HomeScreen() {
 
   const handleShare = async () => {
     try {
-      const shareText = `✦ HAGAH\n\n${combinedText}\n\n— Hagah App`;
-      await Share.share({ message: shareText });
+      const shareText = `✦ HAGAH
+
+${daily.ref}
+
+"${daily.scripture}"
+
+Today's Declaration:
+${daily.declaration}
+
+Speak the Word. Shape your world.
+
+Get Hagah on Google Play:
+${PLAY_STORE_URL}`;
+
+      await Share.share({
+        message: shareText,
+      });
     } catch (error) {
       console.log("Share error:", error);
     }
@@ -295,16 +292,25 @@ export default function HomeScreen() {
         await soundRef.current.unloadAsync();
         soundRef.current = null;
       }
-      const selected = SOUND_FILES.find((sound) => sound.id === soundId);
+
+      const selected = SOUND_FILES.find(
+        (sound) => sound.id === soundId,
+      );
+
       if (!selected) return;
 
-      const { sound } = await Audio.Sound.createAsync(selected.file, {
-        shouldPlay: true,
-        isLooping: true,
-      });
+      const { sound } = await Audio.Sound.createAsync(
+        selected.file,
+        {
+          shouldPlay: true,
+          isLooping: true,
+        },
+      );
+
       soundRef.current = sound;
       setActiveSound(soundId);
       setSoundPlaying(true);
+      setShowSounds(false);
     } catch (error) {
       console.log("Sound play error:", error);
     }
@@ -341,172 +347,280 @@ export default function HomeScreen() {
       style={styles.safe}
       edges={["top", "left", "right", "bottom"]}
     >
-      <View style={styles.header}>
-        <Text style={styles.headerLogo}>✦ HAGAH</Text>
-      </View>
-
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={["#241405", "#0d0700"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.card}
-        >
-          <View style={styles.dayNavRow}>
-            <TouchableOpacity
-              style={styles.dayNavBtn}
-              onPress={handlePreviousDay}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="chevron-back" size={16} color="#c9923a" />
-            </TouchableOpacity>
+        {/* --------------------------------------------------------------- */}
+        {/* HEADER                                                          */}
+        {/* --------------------------------------------------------------- */}
 
-            <View style={styles.dateGroup}>
-              <Text style={styles.refLabel}>{daily.ref}</Text>
-              <Text style={styles.dateLabel}>{dateLabel}</Text>
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.dayNavBtn,
-                !canGoForward && styles.dayNavBtnDisabled,
-              ]}
-              onPress={handleNextDay}
-              activeOpacity={canGoForward ? 0.7 : 1}
-              disabled={!canGoForward}
-            >
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={canGoForward ? "#c9923a" : "#3a2a10"}
-              />
-            </TouchableOpacity>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.brand}>HAGAH</Text>
+            <Text style={styles.brandSub}>SPEAK THE WORD</Text>
           </View>
 
-          <Text style={styles.scriptureText}>
-            &quot;{daily.scripture}&quot;
+          <TouchableOpacity
+            style={styles.headerButton}
+            activeOpacity={0.75}
+            onPress={() => setShowSounds(true)}
+          >
+            <Ionicons
+              name={soundPlaying ? "musical-notes" : "musical-note-outline"}
+              size={18}
+              color={theme.colors.accent}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* --------------------------------------------------------------- */}
+        {/* DAY / DATE                                                      */}
+        {/* --------------------------------------------------------------- */}
+
+        <View style={styles.dateRow}>
+          <TouchableOpacity
+            style={styles.dateArrow}
+            onPress={handlePreviousDay}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={17}
+              color={theme.colors.accent}
+            />
+          </TouchableOpacity>
+
+          <View style={styles.dateCenter}>
+            <Text style={styles.dateRef}>{daily.ref}</Text>
+
+            <Text style={styles.dateLabel}>
+              {dateLabel}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.dateArrow,
+              !canGoForward && styles.dateArrowDisabled,
+            ]}
+            onPress={handleNextDay}
+            activeOpacity={canGoForward ? 0.7 : 1}
+            disabled={!canGoForward}
+          >
+            <Ionicons
+              name="chevron-forward"
+              size={17}
+              color={
+                canGoForward
+                  ? theme.colors.accent
+                  : theme.colors.textDisabled
+              }
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* --------------------------------------------------------------- */}
+        {/* SCRIPTURE                                                       */}
+        {/* --------------------------------------------------------------- */}
+
+        <View style={styles.scriptureSection}>
+          <View style={styles.ornament}>
+            <View style={styles.ornamentLine} />
+            <Text style={styles.ornamentMark}>✦</Text>
+            <View style={styles.ornamentLine} />
+          </View>
+          <Text style={styles.scriptureText}>“{daily.scripture}”</Text>
+
+        </View>
+
+        {/* --------------------------------------------------------------- */}
+        {/* DECLARATION                                                     */}
+        {/* --------------------------------------------------------------- */}
+
+        <View style={styles.declarationSection}>
+          <Text style={styles.sectionEyebrow}>
+            TODAY&apos;S DECLARATION
           </Text>
 
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <View style={styles.dividerDot} />
-            <View style={styles.dividerLine} />
-          </View>
+          <Text style={styles.declarationText}>
+            {daily.declaration}
+          </Text>
+        </View>
 
-          <Text style={styles.declLabel}>TODAY&apos;S DECLARATION</Text>
-          <Text style={styles.declText}>{daily.declaration}</Text>
+        {/* --------------------------------------------------------------- */}
+        {/* MEDITATION ACTION                                               */}
+        {/* --------------------------------------------------------------- */}
 
+        <View style={styles.meditationSection}>
           {isPlaying && (
-            <Text style={styles.readingText}>
-              Meditating · {currentRead} of {TOTAL_READS}
+            <Text style={styles.readingProgress}>
+              MEDITATING · {currentRead} OF {TOTAL_READS}
             </Text>
           )}
 
-          <View style={styles.playRow}>
-            <Animated.View style={{ transform: [{ scale: pulse }] }}>
-              <TouchableOpacity
-                style={[styles.playBtn, isPlaying && styles.playBtnActive]}
-                onPress={handleTogglePlay}
-                activeOpacity={0.85}
-              >
+          <Animated.View
+            style={{
+              transform: [{ scale: pulse }],
+            }}
+          >
+            <TouchableOpacity
+              style={[
+                styles.meditateButton,
+                isPlaying && styles.meditateButtonActive,
+              ]}
+              onPress={handleTogglePlay}
+              activeOpacity={0.86}
+            >
+              <View style={[styles.meditateIcon, isPlaying && styles.meditateIconActive]}>
                 <Ionicons
                   name={isPlaying ? "pause" : "play"}
-                  size={28}
-                  color={isPlaying ? "#1a0f00" : "#c9923a"}
+                  size={18}
+                  color={isPlaying ? theme.colors.onAccent : theme.colors.accent}
                 />
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
+              </View>
 
-          <View style={styles.controlRow}>
-            <Animated.View style={{ transform: [{ scale: musicPulse }] }}>
-              <TouchableOpacity
-                style={styles.smallBtn}
-                onPress={() => setShowSounds(true)}
-                activeOpacity={0.7}
-              >
-                <View
+              <View>
+                <Text
                   style={[
-                    styles.smallCircle,
-                    soundPlaying && styles.smallCircleActive,
+                    styles.meditateTitle,
+                    isPlaying && {
+                      color: theme.colors.onAccent,
+                    },
                   ]}
                 >
-                  <Ionicons
-                    name={
-                      soundPlaying ? "musical-notes" : "musical-note-outline"
-                    }
-                    size={17}
-                    color={soundPlaying ? "#1a0f00" : "#c9923a"}
-                  />
-                </View>
-                <Text style={styles.smallBtnLabel}>
-                  {soundPlaying ? "Playing" : "Sounds"}
+                  {isPlaying ? "Meditating" : "Speak It"}
                 </Text>
-              </TouchableOpacity>
-            </Animated.View>
 
-            <TouchableOpacity
-              style={styles.smallBtn}
-              onPress={handleToggleBookmark}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[
-                  styles.smallCircle,
-                  bookmarked && styles.smallCircleActive,
-                ]}
-              >
-                <Ionicons
-                  name={bookmarked ? "bookmark" : "bookmark-outline"}
-                  size={17}
-                  color={bookmarked ? "#1a0f00" : "#c9923a"}
-                />
+                <Text
+                  style={[
+                    styles.meditateSubtitle,
+                    isPlaying && {
+                      color: theme.colors.onAccent,
+                    },
+                  ]}
+                >
+                  {isPlaying
+                    ? `Reading ${currentRead} of ${TOTAL_READS}`
+                    : "Say the Word out loud"}
+                </Text>
               </View>
-              <Text style={styles.smallBtnLabel}>
-                {bookmarked ? "Saved" : "Save"}
-              </Text>
             </TouchableOpacity>
+          </Animated.View>
 
-            <TouchableOpacity
-              style={styles.smallBtn}
-              onPress={handleCopy}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[styles.smallCircle, copied && styles.smallCircleActive]}
-              >
-                <Ionicons
-                  name={copied ? "checkmark" : "copy-outline"}
-                  size={17}
-                  color={copied ? "#1a0f00" : "#c9923a"}
-                />
-              </View>
-              <Text style={styles.smallBtnLabel}>
-                {copied ? "Copied" : "Copy"}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.smallBtn}
-              onPress={handleShare}
-              activeOpacity={0.7}
-            >
-              <View style={styles.smallCircle}>
-                <Ionicons name="share-outline" size={17} color="#c9923a" />
-              </View>
-              <Text style={styles.smallBtnLabel}>Share</Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.playHint}>
+          <Text style={styles.meditateHint}>
             {isPlaying
               ? "Tap to stop"
-              : "Tap to meditate · say it out loud, 5x"}
+              : "Read it. Speak it. Let the Word settle."}
           </Text>
-        </LinearGradient>
+        </View>
+
+        {/* --------------------------------------------------------------- */}
+        {/* QUICK ACTIONS                                                   */}
+        {/* --------------------------------------------------------------- */}
+
+        <View style={styles.actionsSection}>
+
+
+
+          <TouchableOpacity
+            style={styles.action}
+            onPress={handleToggleBookmark}
+            activeOpacity={0.75}
+          >
+            <View
+              style={[
+                styles.actionIcon,
+                bookmarked && styles.actionIconActive,
+              ]}
+            >
+              <Ionicons
+                name={
+                  bookmarked
+                    ? "bookmark"
+                    : "bookmark-outline"
+                }
+                size={17}
+                color={
+                  bookmarked
+                    ? theme.colors.onAccent
+                    : theme.colors.accent
+                }
+              />
+            </View>
+
+            <Text style={styles.actionLabel}>
+              {bookmarked ? "Saved" : "Save"}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.actionDivider} />
+
+          <TouchableOpacity
+            style={styles.action}
+            onPress={handleCopy}
+            activeOpacity={0.75}
+          >
+            <View
+              style={[
+                styles.actionIcon,
+                copied && styles.actionIconActive,
+              ]}
+            >
+              <Ionicons
+                name={copied ? "checkmark" : "copy-outline"}
+                size={17}
+                color={
+                  copied
+                    ? theme.colors.onAccent
+                    : theme.colors.accent
+                }
+              />
+            </View>
+
+            <Text style={styles.actionLabel}>
+              {copied ? "Copied" : "Copy"}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.actionDivider} />
+
+          <TouchableOpacity
+            style={styles.action}
+            onPress={handleShare}
+            activeOpacity={0.75}
+          >
+            <View style={styles.actionIcon}>
+              <Ionicons
+                name="share-outline"
+                size={17}
+                color={theme.colors.accent}
+              />
+            </View>
+
+            <Text style={styles.actionLabel}>
+              Share
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* --------------------------------------------------------------- */}
+        {/* FOOTNOTE                                                        */}
+        {/* --------------------------------------------------------------- */}
+
+        <View style={styles.footerMessage}>
+          <View style={styles.footerLine} />
+
+          <Text style={styles.footerText}>
+            Speak the Word. Shape your world.
+          </Text>
+
+          <View style={styles.footerLine} />
+        </View>
+
+        {/* --------------------------------------------------------------- */}
+        {/* SOUND MODAL                                                     */}
+        {/* --------------------------------------------------------------- */}
 
         <Modal
           visible={showSounds}
@@ -516,18 +630,34 @@ export default function HomeScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
+              <View style={styles.modalHandle} />
+
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Ambient Sounds</Text>
+                <View>
+                  <Text style={styles.modalEyebrow}>
+                    AMBIENT
+                  </Text>
+
+                  <Text style={styles.modalTitle}>
+                    Sounds for Stillness
+                  </Text>
+                </View>
+
                 <TouchableOpacity
+                  style={styles.modalClose}
                   onPress={() => setShowSounds(false)}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="close" size={20} color="#f5d49a" />
+                  <Ionicons
+                    name="close"
+                    size={19}
+                    color={theme.colors.textPrimary}
+                  />
                 </TouchableOpacity>
               </View>
 
               <Text style={styles.modalSubtitle}>
-                Choose a sound to rest in the presence of God.
+                Choose a sound to accompany your meditation.
               </Text>
 
               {SOUND_FILES.map((sound) => (
@@ -535,286 +665,563 @@ export default function HomeScreen() {
                   key={sound.id}
                   style={[
                     styles.soundRow,
-                    activeSound === sound.id && styles.soundRowActive,
+                    activeSound === sound.id &&
+                    styles.soundRowActive,
                   ]}
                   onPress={() => handleSoundSelect(sound.id)}
-                  activeOpacity={0.85}
+                  activeOpacity={0.82}
                 >
                   <View style={styles.soundLabelGroup}>
-                    <Ionicons
-                      name={
-                        activeSound === sound.id
-                          ? "musical-notes"
-                          : "volume-high-outline"
-                      }
-                      size={16}
-                      color="#f5d49a"
-                    />
-                    <Text style={styles.soundName}>{sound.title}</Text>
+                    <View
+                      style={[
+                        styles.soundIcon,
+                        activeSound === sound.id &&
+                        styles.soundIconActive,
+                      ]}
+                    >
+                      <Ionicons
+                        name={
+                          activeSound === sound.id
+                            ? "musical-notes"
+                            : "volume-high-outline"
+                        }
+                        size={15}
+                        color={
+                          activeSound === sound.id
+                            ? theme.colors.onAccent
+                            : theme.colors.accent
+                        }
+                      />
+                    </View>
+
+                    <Text style={styles.soundName}>
+                      {sound.title}
+                    </Text>
                   </View>
-                  <Text style={styles.soundHint}>
-                    {activeSound === sound.id && soundPlaying
-                      ? "Playing"
-                      : "Open"}
-                  </Text>
+
+                  {activeSound === sound.id &&
+                    soundPlaying ? (
+                    <View style={styles.playingBadge}>
+                      <Text style={styles.playingBadgeText}>
+                        PLAYING
+                      </Text>
+                    </View>
+                  ) : (
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color={theme.colors.textFaint}
+                    />
+                  )}
                 </TouchableOpacity>
               ))}
 
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={handleToggleSound}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.modalButtonText}>
-                  {soundPlaying ? "Stop sound" : "Play selected sound"}
-                </Text>
-              </TouchableOpacity>
+              {activeSound !== null && (
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={handleToggleSound}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons
+                    name={
+                      soundPlaying
+                        ? "stop"
+                        : "play"
+                    }
+                    size={17}
+                    color={theme.colors.onAccent}
+                  />
+
+                  <Text style={styles.modalButtonText}>
+                    {soundPlaying
+                      ? "Stop sound"
+                      : "Play selected sound"}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </Modal>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
+
       <Navbar />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#1a0f00" },
 
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 6,
-  },
-  headerLogo: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#c9923a",
-    letterSpacing: 4,
-  },
+// STYLE FOR THE PAGE::
+function createStyles(theme: Theme) {
+  const c = theme.colors;
 
-  scroll: { paddingHorizontal: 20, paddingTop: 4 },
+  return StyleSheet.create({
+    // -----------------------------------------------------------------------
+    // SCREEN
+    // -----------------------------------------------------------------------
 
-  card: {
-    borderRadius: 18,
-    padding: 24,
-    marginTop: 6,
-    borderWidth: 0.5,
-    borderColor: "rgba(201, 146, 58, 0.2)",
-    overflow: "hidden",
-    shadowColor: "#c9923a",
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-  },
+    safe: {
+      flex: 1,
+      backgroundColor: c.bgBase,
+    },
 
-  dayNavRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  dayNavBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: "rgba(201, 146, 58, 0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(201, 146, 58, 0.08)",
-  },
-  dayNavBtnDisabled: {
-    opacity: 0.35,
-  },
-  dateGroup: {
-    alignItems: "center",
-    gap: 2,
-  },
-  refLabel: {
-    fontSize: 11,
-    color: "#c9923a",
-    letterSpacing: 2.5,
-    textTransform: "uppercase",
-    fontWeight: "700",
-  },
-  dateLabel: {
-    fontSize: 10,
-    color: "rgba(201, 146, 58, 0.55)",
-    letterSpacing: 1,
-  },
-  scriptureText: {
-    fontSize: 15,
-    color: "rgba(201, 146, 58, 0.8)",
-    fontStyle: "italic",
-    lineHeight: 24,
-  },
+    scroll: {
+      paddingHorizontal: 22,
+      paddingTop: 8,
+    },
 
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 22,
-    gap: 8,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "rgba(201, 146, 58, 0.15)",
-  },
-  dividerDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(201, 146, 58, 0.4)",
-  },
+    // -----------------------------------------------------------------------
+    // HEADER
+    // -----------------------------------------------------------------------
 
-  declLabel: {
-    fontSize: 10,
-    color: "rgba(201, 146, 58, 0.5)",
-    letterSpacing: 2,
-    marginBottom: 10,
-  },
-  declText: {
-    fontSize: 18,
-    color: "#f5d49a",
-    lineHeight: 29,
-    fontWeight: "400",
-  },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 34,
+    },
 
-  readingText: {
-    fontSize: 12,
-    color: "#c9923a",
-    letterSpacing: 1,
-    textAlign: "center",
-    marginTop: 24,
-  },
+    brand: {
+      fontSize: 17,
+      fontWeight: "800",
+      letterSpacing: 5,
+      color: c.accent,
+    },
 
-  playRow: {
-    alignItems: "center",
-    marginTop: 22,
-  },
+    brandSub: {
+      marginTop: 5,
+      fontSize: 8,
+      fontWeight: "700",
+      letterSpacing: 2.4,
+      color: c.textFaint,
+    },
 
-  controlRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    marginTop: 18,
-    paddingHorizontal: 6,
-    flexWrap: "wrap",
-  },
+    headerButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.bgSurface,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
 
-  smallBtn: {
-    alignItems: "center",
-    gap: 6,
-    width: 56,
-  },
-  smallCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(201, 146, 58, 0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(201, 146, 58, 0.25)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  smallCircleActive: {
-    backgroundColor: "#c9923a",
-    borderColor: "#c9923a",
-  },
-  smallBtnLabel: {
-    fontSize: 10,
-    color: "rgba(201, 146, 58, 0.6)",
-    fontWeight: "600",
-  },
+    // -----------------------------------------------------------------------
+    // DATE
+    // -----------------------------------------------------------------------
 
-  playBtn: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "rgba(201, 146, 58, 0.18)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  playBtnActive: {
-    backgroundColor: "#c9923a",
-  },
+    dateRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 30,
+    },
 
-  playHint: {
-    fontSize: 11,
-    color: "rgba(201, 146, 58, 0.45)",
-    textAlign: "center",
-    marginTop: 16,
-  },
+    dateArrow: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.bgSurface,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
 
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(10, 6, 2, 0.8)",
-  },
-  modalCard: {
-    backgroundColor: "#241405",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "rgba(201, 146, 58, 0.2)",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-  modalTitle: {
-    color: "#f5d49a",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  modalSubtitle: {
-    color: "rgba(245, 212, 154, 0.7)",
-    fontSize: 13,
-    marginBottom: 12,
-  },
-  soundRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(201, 146, 58, 0.12)",
-  },
-  soundRowActive: {
-    backgroundColor: "rgba(201, 146, 58, 0.14)",
-    borderRadius: 10,
-    paddingHorizontal: 8,
-  },
-  soundLabelGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  soundName: {
-    color: "#f5d49a",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  soundHint: {
-    color: "rgba(245, 212, 154, 0.64)",
-    fontSize: 12,
-  },
-  modalButton: {
-    marginTop: 14,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    backgroundColor: "#c9923a",
-  },
-  modalButtonText: {
-    color: "#1a0f00",
-    fontWeight: "700",
-  },
-});
+    dateArrowDisabled: {
+      opacity: 0.35,
+    },
+
+    dateCenter: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    dateRef: {
+      fontSize: 11,
+      fontWeight: "800",
+      letterSpacing: 2.4,
+      color: c.accent,
+      textTransform: "uppercase",
+    },
+
+    dateLabel: {
+      marginTop: 6,
+      fontSize: 12,
+      color: c.textMuted,
+      letterSpacing: 0.4,
+    },
+
+    // -----------------------------------------------------------------------
+    // SCRIPTURE
+    // -----------------------------------------------------------------------
+
+    scriptureSection: {
+      paddingVertical: 8,
+      marginBottom: 34,
+    },
+
+    ornament: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      marginBottom: 18,
+    },
+
+    ornamentLine: {
+      width: 44,
+      height: 1,
+      backgroundColor: c.border,
+    },
+
+    ornamentMark: {
+      fontSize: 14,
+      color: c.accent,
+    },
+
+    scriptureText: {
+      fontSize: 28,
+      lineHeight: 38,
+      color: c.textPrimary,
+      fontWeight: "500",
+      textAlign: "center",
+      letterSpacing: -0.4,
+    },
+
+
+
+    // -----------------------------------------------------------------------
+    // DECLARATION
+    // -----------------------------------------------------------------------
+
+    declarationSection: {
+      paddingTop: 28,
+      paddingBottom: 8,
+      borderTopWidth: 1,
+      borderTopColor: c.borderSubtle,
+    },
+
+    sectionEyebrow: {
+      fontSize: 9,
+      fontWeight: "800",
+      letterSpacing: 2.6,
+      color: c.accent,
+      marginBottom: 14,
+    },
+
+    declarationText: {
+      fontSize: 20,
+      lineHeight: 31,
+      color: c.textSecondary,
+      fontWeight: "500",
+      letterSpacing: -0.15,
+    },
+
+    // -----------------------------------------------------------------------
+    // MEDITATION
+    // -----------------------------------------------------------------------
+
+    meditationSection: {
+      alignItems: "center",
+      marginTop: 28,
+    },
+
+    readingProgress: {
+      marginBottom: 12,
+      fontSize: 9,
+      fontWeight: "800",
+      letterSpacing: 2,
+      color: c.accent,
+    },
+
+    meditateButton: {
+      width: 210,
+      minHeight: 64,
+
+      paddingHorizontal: 18,
+
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 13,
+
+      backgroundColor: c.accent,
+      borderRadius: 18,
+
+      borderWidth: 1,
+      borderColor: c.accent,
+
+      shadowColor: c.accent,
+      shadowOffset: {
+        width: 0,
+        height: 6,
+      },
+      shadowOpacity: 0.18,
+      shadowRadius: 12,
+
+      elevation: 5,
+    },
+
+    meditateButtonActive: {
+      backgroundColor: c.bgSurface,
+      borderColor: c.accent,
+    },
+
+    meditateIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+
+      alignItems: "center",
+      justifyContent: "center",
+
+      backgroundColor: c.bgBase,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    meditateIconActive: {
+      backgroundColor: c.accent,
+      borderColor: c.accent,
+    },
+    meditateTitle: {
+      fontSize: 15,
+      fontWeight: "800",
+      color: c.onAccent,
+      letterSpacing: 0.2,
+    },
+
+    meditateSubtitle: {
+      marginTop: 2,
+      fontSize: 10,
+      color: c.onAccent,
+      opacity: 0.72,
+    },
+
+    meditateHint: {
+      marginTop: 11,
+      fontSize: 10,
+      color: c.textFaint,
+      letterSpacing: 0.2,
+    },
+
+    // -----------------------------------------------------------------------
+    // ACTIONS
+    // -----------------------------------------------------------------------
+
+    actionsSection: {
+      marginTop: 30,
+      paddingVertical: 17,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-around",
+
+      backgroundColor: c.bgSurface,
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
+      borderColor: c.borderSubtle,
+    },
+
+    action: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 7,
+    },
+
+    actionIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.bgElevated,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+
+    actionIconActive: {
+      backgroundColor: c.accent,
+      borderColor: c.accent,
+    },
+
+    actionLabel: {
+      fontSize: 9,
+      color: c.textMuted,
+      fontWeight: "700",
+      letterSpacing: 0.2,
+    },
+
+    actionDivider: {
+      width: 1,
+      height: 28,
+      backgroundColor: c.borderSubtle,
+    },
+
+    // -----------------------------------------------------------------------
+    // FOOTER
+    // -----------------------------------------------------------------------
+
+    footerMessage: {
+      marginTop: 34,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+
+    footerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: c.borderSubtle,
+    },
+
+    footerText: {
+      fontSize: 9,
+      color: c.textFaint,
+      letterSpacing: 1,
+      textAlign: "center",
+    },
+
+    // -----------------------------------------------------------------------
+    // SOUND MODAL
+    // -----------------------------------------------------------------------
+
+    modalOverlay: {
+      flex: 1,
+      justifyContent: "flex-end",
+      backgroundColor: c.overlay,
+    },
+
+    modalCard: {
+      backgroundColor: c.bgElevated,
+      paddingHorizontal: 20,
+      paddingTop: 10,
+      paddingBottom: 24,
+      borderTopLeftRadius: 26,
+      borderTopRightRadius: 26,
+      borderTopWidth: 1,
+      borderColor: c.border,
+    },
+
+    modalHandle: {
+      alignSelf: "center",
+      width: 38,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: c.borderStrong,
+      marginBottom: 20,
+    },
+
+    modalHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+
+    modalEyebrow: {
+      fontSize: 8,
+      fontWeight: "800",
+      letterSpacing: 2.3,
+      color: c.accent,
+      marginBottom: 5,
+    },
+
+    modalTitle: {
+      color: c.textPrimary,
+      fontSize: 21,
+      fontWeight: "700",
+    },
+
+    modalClose: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.bgSurface,
+    },
+
+    modalSubtitle: {
+      color: c.textMuted,
+      fontSize: 13,
+      lineHeight: 19,
+      marginTop: 9,
+      marginBottom: 16,
+    },
+
+    soundRow: {
+      minHeight: 58,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: c.borderSubtle,
+    },
+
+    soundRowActive: {
+      backgroundColor: c.tint,
+      borderRadius: 12,
+      paddingHorizontal: 10,
+      borderBottomColor: "transparent",
+    },
+
+    soundLabelGroup: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 11,
+    },
+
+    soundIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.bgSurface,
+    },
+
+    soundIconActive: {
+      backgroundColor: c.accent,
+    },
+
+    soundName: {
+      color: c.textPrimary,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+
+    playingBadge: {
+      paddingHorizontal: 9,
+      paddingVertical: 5,
+      borderRadius: 8,
+      backgroundColor: c.tint,
+    },
+
+    playingBadgeText: {
+      color: c.accent,
+      fontSize: 8,
+      fontWeight: "800",
+      letterSpacing: 1,
+    },
+
+    modalButton: {
+      marginTop: 18,
+      minHeight: 52,
+      borderRadius: 15,
+      backgroundColor: c.accent,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
+
+    modalButtonText: {
+      color: c.onAccent,
+      fontSize: 14,
+      fontWeight: "800",
+    },
+  });
+}
