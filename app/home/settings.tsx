@@ -2,6 +2,7 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -15,8 +16,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import Navbar from "../../components/ui/Navbar";
-import TimePickerModal, { type Period } from "../../components/ui/TimePickerModal";
 import {
   Theme,
   ThemeName,
@@ -24,6 +23,8 @@ import {
   themes,
   useTheme,
 } from "../../components/themes/theme";
+import Navbar from "../../components/ui/Navbar";
+import TimePickerModal, { type Period } from "../../components/ui/TimePickerModal";
 import {
   cancelAllDeclarations,
   getScheduledNotifications,
@@ -56,6 +57,7 @@ const KEYS = {
 export default function SettingsScreen() {
   const { theme, themeName, setThemeName } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const router = useRouter();
 
   const [notificationsOn, setNotificationsOn] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -377,14 +379,31 @@ export default function SettingsScreen() {
             </View>
             <Ionicons name="arrow-forward" size={15} color={theme.colors.textFaint} />
           </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.feedbackRow}
+            activeOpacity={0.8}
+            onPress={() => router.push("/home/about")}
+          >
+            <View style={styles.feedbackIcon}>
+              <Ionicons name="information-circle-outline" size={16} color={theme.colors.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.feedbackTitle}>About Hagah</Text>
+              <Text style={styles.feedbackSub}>Read about Hagah and how it works</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={15} color={theme.colors.textFaint} />
+          </TouchableOpacity>
         </View>
 
         {/* Verse footer */}
         <View style={styles.verseCard}>
           <Text style={styles.verseText}>
-            {"\"thou shalt "}
+            {"\"This book of the law shall not depart out of thy mouth; but thou shalt "}
             <Text style={styles.verseBold}>hagah</Text>
-            {" therein day and night... for then thou shalt make thy way prosperous.\""}
+            {" therein day and night, that thou mayest observe to do according to all that is written therein: for then thou shalt make thy way prosperous, and then thou shalt have good success.\""}
           </Text>
           <Text style={styles.verseRef}>Joshua 1:8</Text>
         </View>

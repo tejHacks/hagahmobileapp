@@ -1,10 +1,9 @@
-
-
-
 import { Ionicons } from "@expo/vector-icons";
 import { setAudioModeAsync } from "expo-audio";
 import { Audio } from "expo-av";
 import * as Clipboard from "expo-clipboard";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Sharing from "expo-sharing";
 import * as Speech from "expo-speech";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -18,14 +17,20 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { captureRef } from "react-native-view-shot";
 import { Theme, useTheme } from "../../components/themes/theme";
 import Navbar from "../../components/ui/Navbar";
+import ShareCard from "../../components/ui/ShareCard";
 import { declarations } from "../../data/declarations";
 import { isBookmarked, toggleBookmark } from "../../utils/bookmarks";
 
 const TOTAL_READS = 5;
 const PLAY_STORE_URL =
   "https://play.google.com/store/apps/details?id=com.olateju.hagahapp";
+
+// How long the "caption copied" toast stays visible before it fades out.
+const CAPTION_TOAST_DURATION_MS = 3200;
+
 const SOUND_FILES = [
   {
     id: 1,
@@ -64,6 +69,23 @@ const SOUND_FILES = [
   },
 ];
 
+// 8 preset gradients for the shareable declaration card. Kept all
+// reasonably dark/saturated so the white card text (see ShareCard.tsx)
+// reads cleanly against every one of them without per-gradient tuning.
+const CARD_GRADIENTS: {
+  name: string;
+  colors: readonly [string, string, ...string[]];
+}[] = [
+    { name: "Golden Dusk", colors: ["#2A1B0F", "#B8860B"] },
+    { name: "Royal Purple", colors: ["#1a0b2e", "#6a3093"] },
+    { name: "Deep Ocean", colors: ["#0b1220", "#3E6FA3"] },
+    { name: "Forest Night", colors: ["#10180F", "#3E5B2E"] },
+    { name: "Crimson Ember", colors: ["#1F1410", "#A33D1F"] },
+    { name: "Rose Gold", colors: ["#3d1f2b", "#c9727a"] },
+    { name: "Midnight Teal", colors: ["#08191c", "#0f6d6b"] },
+    { name: "Charcoal Slate", colors: ["#111214", "#4b4f58"] },
+  ];
+
 function getDailyDeclaration(dayOffset = 0) {
   const start = new Date("2026-01-01").getTime();
   const now = new Date().getTime();
@@ -72,7 +94,6 @@ function getDailyDeclaration(dayOffset = 0) {
   return declarations[dayIndex % declarations.length];
 }
 
-// "previous" moves backward in real time only — dayOffset is always >= 0
 function getDisplayDate(dayOffset: number) {
   const d = new Date();
   d.setDate(d.getDate() - dayOffset);
@@ -104,12 +125,26 @@ export default function HomeScreen() {
   const [showSounds, setShowSounds] = useState(false);
   const [activeSound, setActiveSound] = useState<number | null>(null);
   const [soundPlaying, setSoundPlaying] = useState(false);
+
+  const [showGradientPicker, setShowGradientPicker] = useState(false);
+  const [selectedGradientIdx, setSelectedGradientIdx] = useState(0);
+  const [generatingShare, setGeneratingShare] = useState(false);
+
+  // Caption-copied toast — surfaces the fact that the share caption was
+  // copied to the clipboard, since the native share sheet only shows the
+  // image and gives the user no other signal that text came along too.
+  const [showCaptionToast, setShowCaptionToast] = useState(false);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const soundRef = useRef<Audio.Sound | null>(null);
   const pulse = useRef(new Animated.Value(1)).current;
   const isMountedRef = useRef(true);
+  const cardRef = useRef<View>(null);
 
   const fullSpeechText = `${daily.ref}. ${daily.scripture}. Today's declaration. ${daily.declaration}`;
   const combinedText = `${daily.ref}\n"${daily.scripture}"\n\nToday's Declaration:\n${daily.declaration}`;
+  const shareCaption = `✦ HAGAH\n\n${daily.ref}\n\n"${daily.scripture}"\n\nToday's Declaration:\n${daily.declaration}\n\nSpeak the Word. Shape your world.\n\nGet Hagah on Google Play:\n${PLAY_STORE_URL}`;
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -129,6 +164,9 @@ export default function HomeScreen() {
     return () => {
       isMountedRef.current = false;
       Speech.stop();
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
       void (async () => {
         if (soundRef.current) {
           const currentSound = soundRef.current;
@@ -161,7 +199,6 @@ export default function HomeScreen() {
     };
   }, [daily.id]);
 
-
   useEffect(() => {
     if (!isPlaying) {
       pulse.setValue(1);
@@ -189,8 +226,6 @@ export default function HomeScreen() {
       pulse.setValue(1);
     };
   }, [isPlaying, pulse]);
-
-  // scripture display (no animation)
 
   const readNext = (count: number) => {
     if (count > TOTAL_READS) {
@@ -257,27 +292,76 @@ export default function HomeScreen() {
     setTimeout(() => setCopied(false), 2200);
   };
 
-  const handleShare = async () => {
-    try {
-      const shareText = `✦ HAGAH
+  // Shows a small "caption copied" toast that fades in, holds, then fades
+  // out on its own. Safe to call repeatedly — it just resets the timer.
+  const showCopiedCaptionToast = () => {
+    if (!isMountedRef.current) return;
 
-${daily.ref}
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
 
-"${daily.scripture}"
+    setShowCaptionToast(true);
+    Animated.timing(toastOpacity, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
 
-Today's Declaration:
-${daily.declaration}
-
-Speak the Word. Shape your world.
-
-Get Hagah on Google Play:
-${PLAY_STORE_URL}`;
-
-      await Share.share({
-        message: shareText,
+    toastTimeoutRef.current = setTimeout(() => {
+      if (!isMountedRef.current) return;
+      Animated.timing(toastOpacity, {
+        toValue: 0,
+        duration: 260,
+        useNativeDriver: true,
+      }).start(() => {
+        if (isMountedRef.current) setShowCaptionToast(false);
       });
+    }, CAPTION_TOAST_DURATION_MS);
+  };
+
+  // ---------------------------------------------------------------------
+  // SHARE — generates the gradient card image via react-native-view-shot,
+  // copies the caption text to the clipboard (expo-sharing can only hand
+  // off one file, no accompanying text field — this is a share-sheet
+  // platform limitation, not an expo-sharing gap), then opens the native
+  // share sheet with the image so the user can paste the caption in. A
+  // toast confirms the copy so the user actually knows the text is
+  // riding along with the image, instead of just hoping they remember.
+  // ---------------------------------------------------------------------
+  const generateAndShareCard = async (gradientIdx: number) => {
+    setSelectedGradientIdx(gradientIdx);
+    setShowGradientPicker(false);
+    setGeneratingShare(true);
+
+    try {
+      // let the off-screen card re-render with the newly picked gradient
+      // before we snapshot it
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const uri = await captureRef(cardRef, {
+        format: "png",
+        quality: 1,
+      });
+
+      await Clipboard.setStringAsync(shareCaption);
+      showCopiedCaptionToast();
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "image/png",
+          dialogTitle: "Share this declaration",
+        });
+      } else {
+        // No share sheet available on this device — fall back to a
+        // text-only share so the user isn't left with nothing.
+        await Share.share({ message: shareCaption });
+      }
     } catch (error) {
-      console.log("Share error:", error);
+      console.log("Share card error:", error);
+    } finally {
+      setGeneratingShare(false);
     }
   };
 
@@ -332,7 +416,6 @@ ${PLAY_STORE_URL}`;
     await handleSoundSelect(activeSound);
   };
 
-  // Only the past is allowed — dayOffset can only grow, never go below 0 (today)
   const handlePreviousDay = () => {
     setDisplayDayOffset((value) => value + 1);
   };
@@ -351,10 +434,7 @@ ${PLAY_STORE_URL}`;
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* --------------------------------------------------------------- */}
-        {/* HEADER                                                          */}
-        {/* --------------------------------------------------------------- */}
-
+        {/* HEADER */}
         <View style={styles.header}>
           <View>
             <Text style={styles.brand}>HAGAH</Text>
@@ -374,36 +454,23 @@ ${PLAY_STORE_URL}`;
           </TouchableOpacity>
         </View>
 
-        {/* --------------------------------------------------------------- */}
-        {/* DAY / DATE                                                      */}
-        {/* --------------------------------------------------------------- */}
-
+        {/* DAY / DATE */}
         <View style={styles.dateRow}>
           <TouchableOpacity
             style={styles.dateArrow}
             onPress={handlePreviousDay}
             activeOpacity={0.7}
           >
-            <Ionicons
-              name="chevron-back"
-              size={17}
-              color={theme.colors.accent}
-            />
+            <Ionicons name="chevron-back" size={17} color={theme.colors.accent} />
           </TouchableOpacity>
 
           <View style={styles.dateCenter}>
             <Text style={styles.dateRef}>{daily.ref}</Text>
-
-            <Text style={styles.dateLabel}>
-              {dateLabel}
-            </Text>
+            <Text style={styles.dateLabel}>{dateLabel}</Text>
           </View>
 
           <TouchableOpacity
-            style={[
-              styles.dateArrow,
-              !canGoForward && styles.dateArrowDisabled,
-            ]}
+            style={[styles.dateArrow, !canGoForward && styles.dateArrowDisabled]}
             onPress={handleNextDay}
             activeOpacity={canGoForward ? 0.7 : 1}
             disabled={!canGoForward}
@@ -411,19 +478,12 @@ ${PLAY_STORE_URL}`;
             <Ionicons
               name="chevron-forward"
               size={17}
-              color={
-                canGoForward
-                  ? theme.colors.accent
-                  : theme.colors.textDisabled
-              }
+              color={canGoForward ? theme.colors.accent : theme.colors.textDisabled}
             />
           </TouchableOpacity>
         </View>
 
-        {/* --------------------------------------------------------------- */}
-        {/* SCRIPTURE                                                       */}
-        {/* --------------------------------------------------------------- */}
-
+        {/* SCRIPTURE */}
         <View style={styles.scriptureSection}>
           <View style={styles.ornament}>
             <View style={styles.ornamentLine} />
@@ -431,27 +491,15 @@ ${PLAY_STORE_URL}`;
             <View style={styles.ornamentLine} />
           </View>
           <Text style={styles.scriptureText}>“{daily.scripture}”</Text>
-
         </View>
 
-        {/* --------------------------------------------------------------- */}
-        {/* DECLARATION                                                     */}
-        {/* --------------------------------------------------------------- */}
-
+        {/* DECLARATION */}
         <View style={styles.declarationSection}>
-          <Text style={styles.sectionEyebrow}>
-            TODAY&apos;S DECLARATION
-          </Text>
-
-          <Text style={styles.declarationText}>
-            {daily.declaration}
-          </Text>
+          <Text style={styles.sectionEyebrow}>TODAY&apos;S DECLARATION</Text>
+          <Text style={styles.declarationText}>{daily.declaration}</Text>
         </View>
 
-        {/* --------------------------------------------------------------- */}
-        {/* MEDITATION ACTION                                               */}
-        {/* --------------------------------------------------------------- */}
-
+        {/* MEDITATION ACTION */}
         <View style={styles.meditationSection}>
           {isPlaying && (
             <Text style={styles.readingProgress}>
@@ -459,16 +507,9 @@ ${PLAY_STORE_URL}`;
             </Text>
           )}
 
-          <Animated.View
-            style={{
-              transform: [{ scale: pulse }],
-            }}
-          >
+          <Animated.View style={{ transform: [{ scale: pulse }] }}>
             <TouchableOpacity
-              style={[
-                styles.meditateButton,
-                isPlaying && styles.meditateButtonActive,
-              ]}
+              style={[styles.meditateButton, isPlaying && styles.meditateButtonActive]}
               onPress={handleTogglePlay}
               activeOpacity={0.86}
             >
@@ -481,147 +522,80 @@ ${PLAY_STORE_URL}`;
               </View>
 
               <View>
-                <Text
-                  style={[
-                    styles.meditateTitle,
-                    isPlaying && {
-                      color: theme.colors.onAccent,
-                    },
-                  ]}
-                >
+                <Text style={[styles.meditateTitle, isPlaying && { color: theme.colors.onAccent }]}>
                   {isPlaying ? "Meditating" : "Speak It"}
                 </Text>
-
-                <Text
-                  style={[
-                    styles.meditateSubtitle,
-                    isPlaying && {
-                      color: theme.colors.onAccent,
-                    },
-                  ]}
-                >
-                  {isPlaying
-                    ? `Reading ${currentRead} of ${TOTAL_READS}`
-                    : "Say the Word out loud"}
+                <Text style={[styles.meditateSubtitle, isPlaying && { color: theme.colors.onAccent }]}>
+                  {isPlaying ? `Reading ${currentRead} of ${TOTAL_READS}` : "Say the Word out loud"}
                 </Text>
               </View>
             </TouchableOpacity>
           </Animated.View>
 
           <Text style={styles.meditateHint}>
-            {isPlaying
-              ? "Tap to stop"
-              : "Read it. Speak it. Let the Word settle."}
+            {isPlaying ? "Tap to stop" : "Read it. Speak it. Let the Word settle."}
           </Text>
         </View>
 
-        {/* --------------------------------------------------------------- */}
-        {/* QUICK ACTIONS                                                   */}
-        {/* --------------------------------------------------------------- */}
-
+        {/* QUICK ACTIONS */}
         <View style={styles.actionsSection}>
-
-
-
           <TouchableOpacity
             style={styles.action}
             onPress={handleToggleBookmark}
             activeOpacity={0.75}
           >
-            <View
-              style={[
-                styles.actionIcon,
-                bookmarked && styles.actionIconActive,
-              ]}
-            >
+            <View style={[styles.actionIcon, bookmarked && styles.actionIconActive]}>
               <Ionicons
-                name={
-                  bookmarked
-                    ? "bookmark"
-                    : "bookmark-outline"
-                }
+                name={bookmarked ? "bookmark" : "bookmark-outline"}
                 size={17}
-                color={
-                  bookmarked
-                    ? theme.colors.onAccent
-                    : theme.colors.accent
-                }
+                color={bookmarked ? theme.colors.onAccent : theme.colors.accent}
               />
             </View>
-
-            <Text style={styles.actionLabel}>
-              {bookmarked ? "Saved" : "Save"}
-            </Text>
+            <Text style={styles.actionLabel}>{bookmarked ? "Saved" : "Save"}</Text>
           </TouchableOpacity>
 
           <View style={styles.actionDivider} />
 
-          <TouchableOpacity
-            style={styles.action}
-            onPress={handleCopy}
-            activeOpacity={0.75}
-          >
-            <View
-              style={[
-                styles.actionIcon,
-                copied && styles.actionIconActive,
-              ]}
-            >
+          <TouchableOpacity style={styles.action} onPress={handleCopy} activeOpacity={0.75}>
+            <View style={[styles.actionIcon, copied && styles.actionIconActive]}>
               <Ionicons
                 name={copied ? "checkmark" : "copy-outline"}
                 size={17}
-                color={
-                  copied
-                    ? theme.colors.onAccent
-                    : theme.colors.accent
-                }
+                color={copied ? theme.colors.onAccent : theme.colors.accent}
               />
             </View>
-
-            <Text style={styles.actionLabel}>
-              {copied ? "Copied" : "Copy"}
-            </Text>
+            <Text style={styles.actionLabel}>{copied ? "Copied" : "Copy"}</Text>
           </TouchableOpacity>
 
           <View style={styles.actionDivider} />
 
           <TouchableOpacity
             style={styles.action}
-            onPress={handleShare}
+            onPress={() => setShowGradientPicker(true)}
             activeOpacity={0.75}
+            disabled={generatingShare}
           >
             <View style={styles.actionIcon}>
-              <Ionicons
-                name="share-outline"
-                size={17}
-                color={theme.colors.accent}
-              />
+              {generatingShare ? (
+                <Ionicons name="hourglass-outline" size={17} color={theme.colors.accent} />
+              ) : (
+                <Ionicons name="share-outline" size={17} color={theme.colors.accent} />
+              )}
             </View>
-
             <Text style={styles.actionLabel}>
-              Share
+              {generatingShare ? "Preparing…" : "Share"}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* --------------------------------------------------------------- */}
-        {/* FOOTNOTE                                                        */}
-        {/* --------------------------------------------------------------- */}
-
+        {/* FOOTNOTE */}
         <View style={styles.footerMessage}>
           <View style={styles.footerLine} />
-
-          <Text style={styles.footerText}>
-            Speak the Word. Shape your world.
-          </Text>
-
+          <Text style={styles.footerText}>Speak the Word. Shape your world.</Text>
           <View style={styles.footerLine} />
         </View>
 
-        {/* --------------------------------------------------------------- */}
-        {/* SOUND MODAL                                                     */}
-        {/* --------------------------------------------------------------- */}
-
+        {/* SOUND MODAL */}
         <Modal
           visible={showSounds}
           transparent
@@ -634,13 +608,8 @@ ${PLAY_STORE_URL}`;
 
               <View style={styles.modalHeader}>
                 <View>
-                  <Text style={styles.modalEyebrow}>
-                    AMBIENT
-                  </Text>
-
-                  <Text style={styles.modalTitle}>
-                    Sounds for Stillness
-                  </Text>
+                  <Text style={styles.modalEyebrow}>AMBIENT</Text>
+                  <Text style={styles.modalTitle}>Sounds for Stillness</Text>
                 </View>
 
                 <TouchableOpacity
@@ -648,11 +617,7 @@ ${PLAY_STORE_URL}`;
                   onPress={() => setShowSounds(false)}
                   activeOpacity={0.8}
                 >
-                  <Ionicons
-                    name="close"
-                    size={19}
-                    color={theme.colors.textPrimary}
-                  />
+                  <Ionicons name="close" size={19} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
               </View>
 
@@ -663,55 +628,27 @@ ${PLAY_STORE_URL}`;
               {SOUND_FILES.map((sound) => (
                 <TouchableOpacity
                   key={sound.id}
-                  style={[
-                    styles.soundRow,
-                    activeSound === sound.id &&
-                    styles.soundRowActive,
-                  ]}
+                  style={[styles.soundRow, activeSound === sound.id && styles.soundRowActive]}
                   onPress={() => handleSoundSelect(sound.id)}
                   activeOpacity={0.82}
                 >
                   <View style={styles.soundLabelGroup}>
-                    <View
-                      style={[
-                        styles.soundIcon,
-                        activeSound === sound.id &&
-                        styles.soundIconActive,
-                      ]}
-                    >
+                    <View style={[styles.soundIcon, activeSound === sound.id && styles.soundIconActive]}>
                       <Ionicons
-                        name={
-                          activeSound === sound.id
-                            ? "musical-notes"
-                            : "volume-high-outline"
-                        }
+                        name={activeSound === sound.id ? "musical-notes" : "volume-high-outline"}
                         size={15}
-                        color={
-                          activeSound === sound.id
-                            ? theme.colors.onAccent
-                            : theme.colors.accent
-                        }
+                        color={activeSound === sound.id ? theme.colors.onAccent : theme.colors.accent}
                       />
                     </View>
-
-                    <Text style={styles.soundName}>
-                      {sound.title}
-                    </Text>
+                    <Text style={styles.soundName}>{sound.title}</Text>
                   </View>
 
-                  {activeSound === sound.id &&
-                    soundPlaying ? (
+                  {activeSound === sound.id && soundPlaying ? (
                     <View style={styles.playingBadge}>
-                      <Text style={styles.playingBadgeText}>
-                        PLAYING
-                      </Text>
+                      <Text style={styles.playingBadgeText}>PLAYING</Text>
                     </View>
                   ) : (
-                    <Ionicons
-                      name="chevron-forward"
-                      size={16}
-                      color={theme.colors.textFaint}
-                    />
+                    <Ionicons name="chevron-forward" size={16} color={theme.colors.textFaint} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -722,20 +659,9 @@ ${PLAY_STORE_URL}`;
                   onPress={handleToggleSound}
                   activeOpacity={0.85}
                 >
-                  <Ionicons
-                    name={
-                      soundPlaying
-                        ? "stop"
-                        : "play"
-                    }
-                    size={17}
-                    color={theme.colors.onAccent}
-                  />
-
+                  <Ionicons name={soundPlaying ? "stop" : "play"} size={17} color={theme.colors.onAccent} />
                   <Text style={styles.modalButtonText}>
-                    {soundPlaying
-                      ? "Stop sound"
-                      : "Play selected sound"}
+                    {soundPlaying ? "Stop sound" : "Play selected sound"}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -743,37 +669,106 @@ ${PLAY_STORE_URL}`;
           </View>
         </Modal>
 
+        {/* SHARE GRADIENT PICKER MODAL */}
+        <Modal
+          visible={showGradientPicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowGradientPicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHandle} />
+
+              <View style={styles.modalHeader}>
+                <View>
+                  <Text style={styles.modalEyebrow}>SHARE</Text>
+                  <Text style={styles.modalTitle}>Choose a Style</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.modalClose}
+                  onPress={() => setShowGradientPicker(false)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="close" size={19} color={theme.colors.textPrimary} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalSubtitle}>
+                Pick a background for your declaration card. The caption text
+                will be copied to your clipboard automatically and you&apos;ll see a
+                confirmation, then just paste it in once the share sheet opens.
+              </Text>
+
+              <View style={styles.gradientGrid}>
+                {CARD_GRADIENTS.map((g, i) => (
+                  <TouchableOpacity
+                    key={g.name}
+                    style={styles.gradientSwatchWrap}
+                    onPress={() => generateAndShareCard(i)}
+                    activeOpacity={0.85}
+                    disabled={generatingShare}
+                  >
+                    <LinearGradient
+                      colors={g.colors}
+                      style={styles.gradientSwatch}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    />
+                    <Text style={styles.gradientName} numberOfLines={1}>
+                      {g.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Off-screen share card — rendered so react-native-view-shot has a
+            real laid-out node to capture, but positioned off the visible
+            canvas so the user never sees it flash on screen. */}
+        <View style={styles.offscreenCardWrap} pointerEvents="none">
+          <ShareCard
+            ref={cardRef}
+            declaration={{ text: daily.declaration, reference: daily.ref }}
+            gradient={CARD_GRADIENTS[selectedGradientIdx].colors}
+          />
+        </View>
+
         <View style={{ height: 120 }} />
       </ScrollView>
+
+      {/* CAPTION COPIED TOAST — confirms the share text rode along with
+          the image, since the native share sheet gives no signal of that
+          on its own. Positioned above the Navbar, pointerEvents none so
+          it never blocks taps. */}
+      {showCaptionToast && (
+        <Animated.View
+          style={[styles.toastWrap, { opacity: toastOpacity }]}
+          pointerEvents="none"
+        >
+          <View style={styles.toast}>
+            <Ionicons name="checkmark-circle" size={16} color={theme.colors.accent} />
+            <Text style={styles.toastText}>
+              Caption copied — paste it into your share text
+            </Text>
+          </View>
+        </Animated.View>
+      )}
 
       <Navbar />
     </SafeAreaView>
   );
 }
 
-
-// STYLE FOR THE PAGE::
 function createStyles(theme: Theme) {
   const c = theme.colors;
 
   return StyleSheet.create({
-    // -----------------------------------------------------------------------
-    // SCREEN
-    // -----------------------------------------------------------------------
-
-    safe: {
-      flex: 1,
-      backgroundColor: c.bgBase,
-    },
-
-    scroll: {
-      paddingHorizontal: 22,
-      paddingTop: 8,
-    },
-
-    // -----------------------------------------------------------------------
-    // HEADER
-    // -----------------------------------------------------------------------
+    safe: { flex: 1, backgroundColor: c.bgBase },
+    scroll: { paddingHorizontal: 22, paddingTop: 8 },
 
     header: {
       flexDirection: "row",
@@ -781,447 +776,168 @@ function createStyles(theme: Theme) {
       justifyContent: "space-between",
       marginBottom: 34,
     },
-
-    brand: {
-      fontSize: 17,
-      fontWeight: "800",
-      letterSpacing: 5,
-      color: c.accent,
-    },
-
-    brandSub: {
-      marginTop: 5,
-      fontSize: 8,
-      fontWeight: "700",
-      letterSpacing: 2.4,
-      color: c.textFaint,
-    },
-
+    brand: { fontSize: 17, fontWeight: "800", letterSpacing: 5, color: c.accent },
+    brandSub: { marginTop: 5, fontSize: 8, fontWeight: "700", letterSpacing: 2.4, color: c.textFaint },
     headerButton: {
-      width: 42,
-      height: 42,
-      borderRadius: 21,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: c.bgSurface,
-      borderWidth: 1,
-      borderColor: c.border,
+      width: 42, height: 42, borderRadius: 21,
+      alignItems: "center", justifyContent: "center",
+      backgroundColor: c.bgSurface, borderWidth: 1, borderColor: c.border,
     },
 
-    // -----------------------------------------------------------------------
-    // DATE
-    // -----------------------------------------------------------------------
-
-    dateRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 30,
-    },
-
+    dateRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 30 },
     dateArrow: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: c.bgSurface,
-      borderWidth: 1,
-      borderColor: c.border,
+      width: 38, height: 38, borderRadius: 19,
+      alignItems: "center", justifyContent: "center",
+      backgroundColor: c.bgSurface, borderWidth: 1, borderColor: c.border,
     },
+    dateArrowDisabled: { opacity: 0.35 },
+    dateCenter: { alignItems: "center", justifyContent: "center" },
+    dateRef: { fontSize: 11, fontWeight: "800", letterSpacing: 2.4, color: c.accent, textTransform: "uppercase" },
+    dateLabel: { marginTop: 6, fontSize: 12, color: c.textMuted, letterSpacing: 0.4 },
 
-    dateArrowDisabled: {
-      opacity: 0.35,
-    },
-
-    dateCenter: {
-      alignItems: "center",
-      justifyContent: "center",
-    },
-
-    dateRef: {
-      fontSize: 11,
-      fontWeight: "800",
-      letterSpacing: 2.4,
-      color: c.accent,
-      textTransform: "uppercase",
-    },
-
-    dateLabel: {
-      marginTop: 6,
-      fontSize: 12,
-      color: c.textMuted,
-      letterSpacing: 0.4,
-    },
-
-    // -----------------------------------------------------------------------
-    // SCRIPTURE
-    // -----------------------------------------------------------------------
-
-    scriptureSection: {
-      paddingVertical: 8,
-      marginBottom: 34,
-    },
-
-    ornament: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 10,
-      marginBottom: 18,
-    },
-
-    ornamentLine: {
-      width: 44,
-      height: 1,
-      backgroundColor: c.border,
-    },
-
-    ornamentMark: {
-      fontSize: 14,
-      color: c.accent,
-    },
-
+    scriptureSection: { paddingVertical: 8, marginBottom: 34 },
+    ornament: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 18 },
+    ornamentLine: { width: 44, height: 1, backgroundColor: c.border },
+    ornamentMark: { fontSize: 14, color: c.accent },
     scriptureText: {
-      fontSize: 28,
-      lineHeight: 38,
-      color: c.textPrimary,
-      fontWeight: "500",
-      textAlign: "center",
-      letterSpacing: -0.4,
+      fontSize: 28, lineHeight: 38, color: c.textPrimary,
+      fontWeight: "500", textAlign: "center", letterSpacing: -0.4,
     },
-
-
-
-    // -----------------------------------------------------------------------
-    // DECLARATION
-    // -----------------------------------------------------------------------
 
     declarationSection: {
-      paddingTop: 28,
-      paddingBottom: 8,
-      borderTopWidth: 1,
-      borderTopColor: c.borderSubtle,
+      paddingTop: 28, paddingBottom: 8,
+      borderTopWidth: 1, borderTopColor: c.borderSubtle,
     },
-
-    sectionEyebrow: {
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 2.6,
-      color: c.accent,
-      marginBottom: 14,
-    },
-
+    sectionEyebrow: { fontSize: 9, fontWeight: "800", letterSpacing: 2.6, color: c.accent, marginBottom: 14 },
     declarationText: {
-      fontSize: 20,
-      lineHeight: 31,
-      color: c.textSecondary,
-      fontWeight: "500",
-      letterSpacing: -0.15,
+      fontSize: 20, lineHeight: 31, color: c.textSecondary,
+      fontWeight: "500", letterSpacing: -0.15,
     },
 
-    // -----------------------------------------------------------------------
-    // MEDITATION
-    // -----------------------------------------------------------------------
-
-    meditationSection: {
-      alignItems: "center",
-      marginTop: 28,
-    },
-
-    readingProgress: {
-      marginBottom: 12,
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 2,
-      color: c.accent,
-    },
-
+    meditationSection: { alignItems: "center", marginTop: 28 },
+    readingProgress: { marginBottom: 12, fontSize: 9, fontWeight: "800", letterSpacing: 2, color: c.accent },
     meditateButton: {
-      width: 210,
-      minHeight: 64,
-
-      paddingHorizontal: 18,
-
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 13,
-
-      backgroundColor: c.accent,
-      borderRadius: 18,
-
-      borderWidth: 1,
-      borderColor: c.accent,
-
-      shadowColor: c.accent,
-      shadowOffset: {
-        width: 0,
-        height: 6,
-      },
-      shadowOpacity: 0.18,
-      shadowRadius: 12,
-
-      elevation: 5,
+      width: 210, minHeight: 64, paddingHorizontal: 18,
+      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 13,
+      backgroundColor: c.accent, borderRadius: 18,
+      borderWidth: 1, borderColor: c.accent,
+      shadowColor: c.accent, shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.18, shadowRadius: 12, elevation: 5,
     },
-
-    meditateButtonActive: {
-      backgroundColor: c.bgSurface,
-      borderColor: c.accent,
-    },
-
+    meditateButtonActive: { backgroundColor: c.bgSurface, borderColor: c.accent },
     meditateIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-
-      alignItems: "center",
-      justifyContent: "center",
-
-      backgroundColor: c.bgBase,
-      borderWidth: 1,
-      borderColor: c.border,
+      width: 40, height: 40, borderRadius: 20,
+      alignItems: "center", justifyContent: "center",
+      backgroundColor: c.bgBase, borderWidth: 1, borderColor: c.border,
     },
-    meditateIconActive: {
-      backgroundColor: c.accent,
-      borderColor: c.accent,
-    },
-    meditateTitle: {
-      fontSize: 15,
-      fontWeight: "800",
-      color: c.onAccent,
-      letterSpacing: 0.2,
-    },
-
-    meditateSubtitle: {
-      marginTop: 2,
-      fontSize: 10,
-      color: c.onAccent,
-      opacity: 0.72,
-    },
-
-    meditateHint: {
-      marginTop: 11,
-      fontSize: 10,
-      color: c.textFaint,
-      letterSpacing: 0.2,
-    },
-
-    // -----------------------------------------------------------------------
-    // ACTIONS
-    // -----------------------------------------------------------------------
+    meditateIconActive: { backgroundColor: c.accent, borderColor: c.accent },
+    meditateTitle: { fontSize: 15, fontWeight: "800", color: c.onAccent, letterSpacing: 0.2 },
+    meditateSubtitle: { marginTop: 2, fontSize: 10, color: c.onAccent, opacity: 0.72 },
+    meditateHint: { marginTop: 11, fontSize: 10, color: c.textFaint, letterSpacing: 0.2 },
 
     actionsSection: {
-      marginTop: 30,
-      paddingVertical: 17,
+      marginTop: 30, paddingVertical: 17,
+      flexDirection: "row", alignItems: "center", justifyContent: "space-around",
+      backgroundColor: c.bgSurface,
+      borderTopWidth: 1, borderBottomWidth: 1, borderColor: c.borderSubtle,
+    },
+    action: { flex: 1, alignItems: "center", justifyContent: "center", gap: 7 },
+    actionIcon: {
+      width: 38, height: 38, borderRadius: 19,
+      alignItems: "center", justifyContent: "center",
+      backgroundColor: c.bgElevated, borderWidth: 1, borderColor: c.border,
+    },
+    actionIconActive: { backgroundColor: c.accent, borderColor: c.accent },
+    actionLabel: { fontSize: 9, color: c.textMuted, fontWeight: "700", letterSpacing: 0.2 },
+    actionDivider: { width: 1, height: 28, backgroundColor: c.borderSubtle },
+
+    footerMessage: { marginTop: 34, flexDirection: "row", alignItems: "center", gap: 10 },
+    footerLine: { flex: 1, height: 1, backgroundColor: c.borderSubtle },
+    footerText: { fontSize: 9, color: c.textFaint, letterSpacing: 1, textAlign: "center" },
+
+    modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: c.overlay },
+    modalCard: {
+      backgroundColor: c.bgElevated, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 24,
+      borderTopLeftRadius: 26, borderTopRightRadius: 26,
+      borderTopWidth: 1, borderColor: c.border,
+    },
+    modalHandle: {
+      alignSelf: "center", width: 38, height: 4, borderRadius: 2,
+      backgroundColor: c.borderStrong, marginBottom: 20,
+    },
+    modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    modalEyebrow: { fontSize: 8, fontWeight: "800", letterSpacing: 2.3, color: c.accent, marginBottom: 5 },
+    modalTitle: { color: c.textPrimary, fontSize: 21, fontWeight: "700" },
+    modalClose: {
+      width: 38, height: 38, borderRadius: 19,
+      alignItems: "center", justifyContent: "center", backgroundColor: c.bgSurface,
+    },
+    modalSubtitle: { color: c.textMuted, fontSize: 13, lineHeight: 19, marginTop: 9, marginBottom: 16 },
+
+    soundRow: {
+      minHeight: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+      paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: c.borderSubtle,
+    },
+    soundRowActive: { backgroundColor: c.tint, borderRadius: 12, paddingHorizontal: 10, borderBottomColor: "transparent" },
+    soundLabelGroup: { flexDirection: "row", alignItems: "center", gap: 11 },
+    soundIcon: {
+      width: 36, height: 36, borderRadius: 18,
+      alignItems: "center", justifyContent: "center", backgroundColor: c.bgSurface,
+    },
+    soundIconActive: { backgroundColor: c.accent },
+    soundName: { color: c.textPrimary, fontSize: 14, fontWeight: "600" },
+    playingBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8, backgroundColor: c.tint },
+    playingBadgeText: { color: c.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1 },
+    modalButton: {
+      marginTop: 18, minHeight: 52, borderRadius: 15, backgroundColor: c.accent,
+      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    },
+    modalButtonText: { color: c.onAccent, fontSize: 14, fontWeight: "800" },
+
+    // ── Gradient picker ──
+    gradientGrid: {
+      flexDirection: "row", flexWrap: "wrap",
+      gap: 12, justifyContent: "space-between", paddingBottom: 6,
+    },
+    gradientSwatchWrap: { width: "22%", alignItems: "center", gap: 6 },
+    gradientSwatch: {
+      width: "100%", aspectRatio: 1, borderRadius: 12,
+      borderWidth: 1, borderColor: c.border,
+    },
+    gradientName: { fontSize: 9, color: c.textFaint, textAlign: "center" },
+
+    offscreenCardWrap: { position: "absolute", top: -9999, left: -9999 },
+
+    // ── Caption copied toast ──
+    toastWrap: {
+      position: "absolute",
+      left: 22,
+      right: 22,
+      bottom: 110,
+      alignItems: "center",
+    },
+    toast: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-around",
-
-      backgroundColor: c.bgSurface,
-      borderTopWidth: 1,
-      borderBottomWidth: 1,
-      borderColor: c.borderSubtle,
-    },
-
-    action: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 7,
-    },
-
-    actionIcon: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      alignItems: "center",
-      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 14,
       backgroundColor: c.bgElevated,
       borderWidth: 1,
       borderColor: c.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.18,
+      shadowRadius: 10,
+      elevation: 6,
+      maxWidth: "100%",
     },
-
-    actionIconActive: {
-      backgroundColor: c.accent,
-      borderColor: c.accent,
-    },
-
-    actionLabel: {
-      fontSize: 9,
-      color: c.textMuted,
-      fontWeight: "700",
-      letterSpacing: 0.2,
-    },
-
-    actionDivider: {
-      width: 1,
-      height: 28,
-      backgroundColor: c.borderSubtle,
-    },
-
-    // -----------------------------------------------------------------------
-    // FOOTER
-    // -----------------------------------------------------------------------
-
-    footerMessage: {
-      marginTop: 34,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-    },
-
-    footerLine: {
-      flex: 1,
-      height: 1,
-      backgroundColor: c.borderSubtle,
-    },
-
-    footerText: {
-      fontSize: 9,
-      color: c.textFaint,
-      letterSpacing: 1,
-      textAlign: "center",
-    },
-
-    // -----------------------------------------------------------------------
-    // SOUND MODAL
-    // -----------------------------------------------------------------------
-
-    modalOverlay: {
-      flex: 1,
-      justifyContent: "flex-end",
-      backgroundColor: c.overlay,
-    },
-
-    modalCard: {
-      backgroundColor: c.bgElevated,
-      paddingHorizontal: 20,
-      paddingTop: 10,
-      paddingBottom: 24,
-      borderTopLeftRadius: 26,
-      borderTopRightRadius: 26,
-      borderTopWidth: 1,
-      borderColor: c.border,
-    },
-
-    modalHandle: {
-      alignSelf: "center",
-      width: 38,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: c.borderStrong,
-      marginBottom: 20,
-    },
-
-    modalHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-    },
-
-    modalEyebrow: {
-      fontSize: 8,
-      fontWeight: "800",
-      letterSpacing: 2.3,
-      color: c.accent,
-      marginBottom: 5,
-    },
-
-    modalTitle: {
+    toastText: {
       color: c.textPrimary,
-      fontSize: 21,
-      fontWeight: "700",
-    },
-
-    modalClose: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: c.bgSurface,
-    },
-
-    modalSubtitle: {
-      color: c.textMuted,
-      fontSize: 13,
-      lineHeight: 19,
-      marginTop: 9,
-      marginBottom: 16,
-    },
-
-    soundRow: {
-      minHeight: 58,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 4,
-      borderBottomWidth: 1,
-      borderBottomColor: c.borderSubtle,
-    },
-
-    soundRowActive: {
-      backgroundColor: c.tint,
-      borderRadius: 12,
-      paddingHorizontal: 10,
-      borderBottomColor: "transparent",
-    },
-
-    soundLabelGroup: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 11,
-    },
-
-    soundIcon: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: c.bgSurface,
-    },
-
-    soundIconActive: {
-      backgroundColor: c.accent,
-    },
-
-    soundName: {
-      color: c.textPrimary,
-      fontSize: 14,
+      fontSize: 12,
       fontWeight: "600",
-    },
-
-    playingBadge: {
-      paddingHorizontal: 9,
-      paddingVertical: 5,
-      borderRadius: 8,
-      backgroundColor: c.tint,
-    },
-
-    playingBadgeText: {
-      color: c.accent,
-      fontSize: 8,
-      fontWeight: "800",
-      letterSpacing: 1,
-    },
-
-    modalButton: {
-      marginTop: 18,
-      minHeight: 52,
-      borderRadius: 15,
-      backgroundColor: c.accent,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-    },
-
-    modalButtonText: {
-      color: c.onAccent,
-      fontSize: 14,
-      fontWeight: "800",
+      flexShrink: 1,
     },
   });
 }

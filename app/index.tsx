@@ -1,22 +1,20 @@
-
-
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
+  Animated,
   Dimensions,
   FlatList,
-  TouchableOpacity,
-  Animated,
-  NativeSyntheticEvent,
   NativeScrollEvent,
+  NativeSyntheticEvent,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Ionicons } from "@expo/vector-icons";
 
 const { width, height } = Dimensions.get("window");
 
@@ -48,10 +46,19 @@ const SLIDES: Slide[] = [
     glow: "#FFC94A",
   },
   {
+    key: "bible",
+    eyebrow: "SCRIPTURE",
+    title: "The full KJV,\nnow inside Hagah",
+    body: "Every book, every chapter, with Strong's word tags to unlock the original Hebrew and Greek behind the text. Search any verse in seconds — no more leaving the app to look something up.",
+    icon: "book",
+    gradient: ["#0B1220", "#152A4A", "#3E6FA3"],
+    glow: "#8EC9FF",
+  },
+  {
     key: "pad",
     eyebrow: "PAD",
-    title: "Pin every prayer.\nTrack every answer.",
-    body: "Write down what you're believing God for. Tick it off when heaven answers. Your testimony, dated and kept.",
+    title: "Pin every word\nyou're standing on",
+    body: "Bookmark the declarations and scriptures you're believing God for. Tick them off when heaven answers. Your testimony, dated and kept.",
     icon: "pin",
     gradient: ["#1F1410", "#5C2A1A", "#A33D1F"],
     glow: "#FF7A45",
@@ -69,7 +76,7 @@ const SLIDES: Slide[] = [
     key: "welcome",
     eyebrow: "HAGAH",
     title: "Meditate.\nDeclare. Become.",
-    body: "Hagah — to meditate, to mutter, to speak low and constant, like Joshua 1:8 commands. This is your daily place to do exactly that.",
+    body: "Hagah — to meditate, to mutter, to speak low and constant, like Joshua 1:8 commands. Full KJV Bible, Strong's, search, and shareable declarations — everything you need to keep the Word in your mouth, day and night.",
     icon: "sparkles",
     gradient: ["#1A1006", "#3D2410", "#C9962C"],
     glow: "#FFD56B",

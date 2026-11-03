@@ -2,14 +2,14 @@
   "expo": {
     "name": "Hagah",
     "slug": "hagah",
-    "version": "1.0.2",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "scheme": "hagah",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "buildNumber": "2",
+      "buildNumber": "4",
       "supportsTablet": true,
       "infoPlist": {
         "UIBackgroundModes": [

@@ -19,6 +19,8 @@ function Verse({
     handleVerseTap: (v: string) => void;
     handleVerseLongPress: (v: string) => void;
     styles: any;
+    fontSize?: number;
+    showStrongs?: boolean;
 }) {
     return (
         <Text style={[styles.verseBlock, { fontSize }]} key={vNum}>

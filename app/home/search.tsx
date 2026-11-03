@@ -8,43 +8,66 @@ import Filters from "./bible/search/Filters";
 import SearchHeader from "./bible/search/Header";
 import ResultItem from "./bible/search/ResultItem";
 
+// Correct 27-book NT id list matching build-bible-db.js output
+// (note: Philippians is "Phl", not "Phi" — this was the source of a
+// miscategorization bug in the OT/NT filter).
+const NT_BOOKS = [
+    "Mat", "Mar", "Luk", "Jhn", "Act", "Rom", "1Co", "2Co", "Gal", "Eph",
+    "Phl", "Col", "1Th", "2Th", "1Ti", "2Ti", "Tit", "Phm", "Heb", "Jas",
+    "1Pe", "2Pe", "1Jo", "2Jo", "3Jo", "Jde", "Rev",
+];
+
+type SearchResult = { book: string; chapter: number; verse: number; text: string };
+
 export default function SearchPageRoot() {
     const router = useRouter();
     const { theme } = useTheme();
 
     const [term, setTerm] = useState("");
     const [scope, setScope] = useState<"all" | "ot" | "nt">("all");
-    type SearchResult = { book: string; chapter: number; verse: number; text: string };
     const [results, setResults] = useState<SearchResult[]>([]);
+    const [searching, setSearching] = useState(false);
 
     const styles = useMemo(() => createStyles(theme), [theme]);
 
-    const doSearch = useCallback(async () => {
-        if (!term || term.trim() === "") return;
-        const rows = await searchAll(term);
-        let filtered = rows;
-        // TODO: replace with real OT/NT book lists
-        const nt = ["Mat", "Mar", "Luk", "Jhn", "Act", "Rom", "1Co", "2Co", "Gal", "Eph", "Phi", "Col", "1Th", "2Th", "1Ti", "2Ti", "Tit", "Phm", "Heb", "Jas", "1Pe", "2Pe", "1Jo", "2Jo", "3Jo", "Jde", "Rev"];
-        if (scope === "ot") filtered = rows.filter(r => !nt.includes(r.book));
-        if (scope === "nt") filtered = rows.filter(r => nt.includes(r.book));
-        setResults(filtered.slice(0, 500));
-    }, [term, scope]);
+    // Runs the actual DB query — scope-agnostic, always fetches full results
+    // and lets applyScope() below do the filtering.
+    const runQuery = useCallback(async (searchTerm: string) => {
+        if (!searchTerm || searchTerm.trim() === "") {
+            setResults([]);
+            return;
+        }
+        setSearching(true);
+        try {
+            const rows = await searchAll(searchTerm);
+            setResults(rows);
+        } finally {
+            setSearching(false);
+        }
+    }, []);
+
+    const doSearch = useCallback(() => {
+        runQuery(term);
+    }, [term, runQuery]);
+
+    // Apply OT/NT/ALL filter to whatever is currently in `results`.
+    // This is derived, not stored separately, so switching scope never
+    // needs a fresh DB hit and can never go stale.
+    const filteredResults = useMemo(() => {
+        if (scope === "ot") return results.filter((r) => !NT_BOOKS.includes(r.book));
+        if (scope === "nt") return results.filter((r) => NT_BOOKS.includes(r.book));
+        return results;
+    }, [results, scope]);
 
     const onSelect = (item: SearchResult) => {
-        // use replace so we don't stack many bible routes in history and to
-        // ensure params are applied immediately
         router.replace(`/home/bible?book=${item.book}&chapter=${item.chapter}&verse=${item.verse}`);
     };
 
-    // clear results when input is emptied
+    // clear results when input is emptied — scope no longer needs its own
+    // effect since filtering is derived via useMemo above, not re-fetched.
     React.useEffect(() => {
         if (!term || term.trim() === "") setResults([]);
     }, [term]);
-
-    // clear results when scope changes to keep UI clean
-    React.useEffect(() => {
-        setResults([]);
-    }, [scope]);
 
     return (
         <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
@@ -67,15 +90,23 @@ export default function SearchPageRoot() {
 
                 <FlatList
                     keyboardShouldPersistTaps="handled"
-                    data={results}
+                    data={filteredResults}
                     style={styles.results}
                     showsVerticalScrollIndicator={true}
                     indicatorStyle={getIndicatorStyle(theme)}
                     contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 24 }}
                     ListEmptyComponent={() => (
-                        <View style={{ padding: 20 }}>
-                            <Text style={{ color: theme.colors.textFaint }}>{term && term.trim() !== "" ? "No matches found." : "Type a term and press Search to find scriptures."}</Text>
-                        </View>
+                        searching ? (
+                            <View style={{ padding: 12 }}>
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                    <View key={i} style={{ height: 48, backgroundColor: theme.colors.bgSurface, borderRadius: 8, marginBottom: 10 }} />
+                                ))}
+                            </View>
+                        ) : (
+                            <View style={{ padding: 20 }}>
+                                <Text style={{ color: theme.colors.textFaint }}>{term && term.trim() !== "" ? "No matches found." : "Type a term and press Search to find scriptures."}</Text>
+                            </View>
+                        )
                     )}
                     keyExtractor={(i, idx) => `${i.book}-${i.chapter}-${i.verse}-${idx}`}
                     renderItem={({ item }) => <ResultItem item={item} onPress={onSelect} theme={theme} highlight={term} />}

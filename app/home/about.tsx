@@ -1,5 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
+import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   Alert,
@@ -10,8 +11,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Navbar from "../../components/ui/Navbar";
 import { Theme, useTheme } from "../../components/themes/theme";
+import Navbar from "../../components/ui/Navbar";
 
 type Section = {
   iconType: "hebrew" | "ionicons" | "mci";
@@ -128,6 +129,7 @@ function buildCopyText(currency: Exclude<Currency, null>): string {
 export default function AboutScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const router = useRouter();
 
   const [selected, setSelected] = useState<Currency>(null);
   const [copied, setCopied] = useState(false);
@@ -160,6 +162,14 @@ export default function AboutScreen() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
+        <TouchableOpacity
+          style={styles.backRow}
+          activeOpacity={0.8}
+          onPress={() => router.push("/home/settings")}
+        >
+          <Ionicons name="chevron-back" size={18} color={theme.colors.accent} style={{ marginRight: 8 }} />
+          <Text style={styles.backText}>Back to Settings</Text>
+        </TouchableOpacity>
         {/* Hero */}
         <View style={styles.hero}>
           <Text style={styles.heroHebrew}>הגה</Text>
@@ -533,5 +543,7 @@ function createStyles(theme: Theme) {
       letterSpacing: 1,
       marginTop: 4,
     },
+    backRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+    backText: { color: c.accent, fontSize: 14, fontWeight: "700" },
   });
 }

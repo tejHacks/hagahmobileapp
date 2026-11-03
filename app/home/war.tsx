@@ -19,8 +19,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Theme, useTheme } from "../../components/themes/theme";
 import Navbar from "../../components/ui/Navbar";
+import { bibleBooks } from "../../data/bible";
 import { booksByIssue } from "../../data/books_war_recommended";
 import { battleCards, type BattleCard } from "../../data/war_declarations";
+import { getDb } from "../../utils/database";
 
 const NAME_KEY = "hagah_warrior_name";
 
@@ -41,6 +43,88 @@ export default function WarScreen() {
   const [selected, setSelected] = useState<BattleCard>(battleCards[0]);
   const [battleIndex, setBattleIndex] = useState(0);
   const [speakingTitle, setSpeakingTitle] = useState<string | null>(null);
+  const prayerPrompts = [
+    "Pray until your heart becomes still before God.",
+    "Pray in the Spirit. Pray with understanding. Bring this battle before God.",
+    "Do not rush this moment. Stay with God.",
+    "Let Scripture shape your prayer, not your fear.",
+    "Ask the Holy Spirit to expose what you cannot see for yourself.",
+  ];
+  const [promptIndex, setPromptIndex] = useState(() => Math.floor(Math.random() * prayerPrompts.length));
+  const [resolvedScriptures, setResolvedScriptures] = useState<Record<string, string | null>>({});
+  const resolvedCacheRef = useRef<Record<string, string | null>>({});
+
+  const parseReference = React.useCallback((ref: string) => {
+    const r = ref.trim();
+    const lower = r.toLowerCase();
+    // Try matching by book name, id, or common variants (singular/plural/abbrev)
+    let bookMatch = null as (typeof bibleBooks)[0] | null;
+    for (const b of bibleBooks) {
+      const name = b.name.toLowerCase();
+      const id = b.id.toLowerCase();
+      const variants = new Set<string>([
+        name,
+        id,
+        name.replace(/\s+/g, ""),
+        name.replace(/s$/, ""),
+      ]);
+      for (const v of variants) {
+        if (v && lower.startsWith(v)) {
+          bookMatch = b;
+          break;
+        }
+      }
+      if (bookMatch) break;
+    }
+    if (!bookMatch) return null;
+    // remove the matched book name from the start (best-effort)
+    let rest = r.slice(bookMatch.name.length).trim();
+    if (!rest) rest = r.slice(bookMatch.id.length).trim();
+    const first = rest.split(" ")[0] || rest;
+    const [chapStr, verseStr] = first.split(":");
+    const chapter = parseInt(chapStr, 10);
+    if (isNaN(chapter)) return null;
+    let startVerse = 1;
+    let endVerse = 1;
+    if (verseStr) {
+      const parts = verseStr.split(/[-–—]/).map((s) => s.replace(/[^0-9]/g, "")).filter(Boolean);
+      startVerse = parseInt(parts[0], 10) || 1;
+      endVerse = parts[1] ? parseInt(parts[1], 10) || startVerse : startVerse;
+    }
+    return { bookId: bookMatch.id, chapter, startVerse, endVerse };
+  }, []);
+
+  const resolveReferenceText = React.useCallback(async (reference: string) => {
+    if (Object.prototype.hasOwnProperty.call(resolvedCacheRef.current, reference)) {
+      return resolvedCacheRef.current[reference];
+    }
+    const parsed = parseReference(reference);
+    if (!parsed) return null;
+    try {
+      // Query only the needed verses (faster for large chapters like Psalms)
+      const db = await getDb();
+      const rows = await db.getAllAsync<{ verse: number; words_json: string }>(
+        `SELECT verse, words_json FROM verses WHERE book = ? AND chapter = ? AND verse BETWEEN ? AND ? ORDER BY verse ASC`,
+        [parsed.bookId, parsed.chapter, parsed.startVerse, parsed.endVerse]
+      );
+      const texts: string[] = [];
+      for (const row of rows) {
+        try {
+          const words = JSON.parse(row.words_json) as { t: string }[];
+          texts.push(words.map((w) => w.t).join(" "));
+        } catch {
+          // ignore malformed row
+        }
+      }
+      const joined = texts.join(" ");
+      resolvedCacheRef.current[reference] = joined || null;
+      return joined || null;
+    } catch (e) {
+      console.warn("Resolve reference failed", reference, e);
+      resolvedCacheRef.current[reference] = null;
+      return null;
+    }
+  }, [parseReference]);
 
   const pageFade = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(0)).current;
@@ -90,6 +174,8 @@ export default function WarScreen() {
     ]).start(() => {
       setBattleIndex(newIndex);
       setSelected(battleCards[newIndex]);
+      // pick a new random prayer prompt when battle changes
+      setPromptIndex(Math.floor(Math.random() * prayerPrompts.length));
       cardSlide.setValue(-direction);
       Animated.parallel([
         fadeIn(cardFade, 220),
@@ -110,7 +196,9 @@ export default function WarScreen() {
     }
     Speech.stop();
     setSpeakingTitle(selected.title);
-    const text = `${selected.verse}. ${selected.scripture}. My declaration: ${selected.declaration(userName || "warrior")}`;
+    const base = selected.declaration(userName || "warrior");
+    const strong = `In the name of Jesus, I, ${userName || "warrior"}, decree and declare: ${base} I break every assignment of the enemy, and I take hold of the promises of God for my life. By the blood of Jesus and the power of the Holy Spirit, I stand firm and walk free.`;
+    const text = `${selected.verse}. ${selected.scripture}. ${strong}`;
     Speech.speak(text, {
       rate: 0.9,
       onDone: () => setSpeakingTitle(null),
@@ -120,6 +208,28 @@ export default function WarScreen() {
   };
 
   const isSpeaking = speakingTitle === selected.title;
+
+  // Resolve scripture texts (up to 3) from local DB when the battle changes
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setResolvedScriptures({});
+      if (!selected?.scriptures) return;
+      const list = selected.scriptures.slice(0, 3);
+      for (const sc of list) {
+        if (!mounted) return;
+        if (sc.text) {
+          setResolvedScriptures((s) => ({ ...s, [sc.reference]: sc.text ?? null }));
+          resolvedCacheRef.current[sc.reference] = sc.text ?? null;
+        } else {
+          const txt = await resolveReferenceText(sc.reference);
+          if (!mounted) return;
+          setResolvedScriptures((s) => ({ ...s, [sc.reference]: txt ?? null }));
+        }
+      }
+    })();
+    return () => { mounted = false; };
+  }, [battleIndex, selected, resolveReferenceText]);
 
   if (phase === "loading") return <View style={styles.safe} />;
 
@@ -253,49 +363,124 @@ export default function WarScreen() {
             </Text>
           </View>
 
-          {/* Battle card */}
-          <Animated.View
-            style={[styles.battleCard, { opacity: cardFade, transform: [{ translateX: cardSlide }] }]}
-          >
-            <View style={styles.battleIconWrap}>
-              <View style={[styles.battleIconCircle, isSpeaking && styles.battleIconCircleActive]}>
-                <Ionicons
-                  name={selected.icon as any}
-                  size={40}
-                  color={isSpeaking ? theme.colors.onAccent : theme.colors.accent}
-                />
+          {/* Battle content structured into multiple sections */}
+          <Animated.View style={{ opacity: cardFade, transform: [{ translateX: cardSlide }] }}>
+
+            {/* Intro */}
+            <View style={styles.sectionSurface}>
+              <View style={styles.battleHeaderRow}>
+                <View style={[styles.battleIconCircleSmall, isSpeaking && styles.battleIconCircleActive]}>
+                  <Ionicons name={selected.icon as any} size={28} color={isSpeaking ? theme.colors.onAccent : theme.colors.accent} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.battleTitle}>{selected.title}</Text>
+                  <Text style={styles.battleVerseSmall}>{selected.verse}</Text>
+                </View>
+                <View style={{ width: 72, alignItems: 'flex-end' }}>
+                  <Text style={styles.navCount}>BATTLE {String(battleIndex + 1).padStart(2, '0')} / {battleCards.length}</Text>
+                </View>
               </View>
+
+              {selected.description ? <Text style={styles.battleIntro}>{selected.description}</Text> : null}
             </View>
 
-            <Text style={styles.battleTitle}>{selected.title}</Text>
-            <Text style={styles.battleVerse}>{selected.verse}</Text>
+            {/* How to fight */}
+            {selected.howToFight && selected.howToFight.length > 0 && (
+              <View style={styles.sectionSurface}>
+                <Text style={styles.sectionHeading}>HOW TO FIGHT</Text>
+                {selected.howToFight.map((s, i) => (
+                  <View key={i} style={styles.howRow}>
+                    <View style={styles.howIndex}><Text style={styles.howIndexText}>{String(i + 1).padStart(2, '0')}</Text></View>
+                    <Text style={styles.howText}>{s}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
 
-            <View style={styles.battleDivider} />
+            {/* Scriptures to fight with (limit 3) */}
+            <View style={styles.sectionSurface}>
+              <Text style={styles.sectionHeading}>SCRIPTURES TO FIGHT WITH</Text>
+              <Text style={styles.battleScripture}>&quot;{selected.scripture}&quot;</Text>
+              {selected.scriptures && selected.scriptures.slice(0, 3).map((sc, idx) => (
+                <View key={sc.reference + idx} style={styles.scriptureRow}>
+                  <Text style={styles.scriptureIndex}>{String(idx + 1).padStart(2, '0')}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.scriptureRef}>{sc.reference}</Text>
+                    {/* If text is available include it, otherwise the app may later resolve from DB */}
+                    {sc.text ? (
+                      <Text style={styles.scriptureText}>&quot;{sc.text}&quot;</Text>
+                    ) : (
+                      resolvedScriptures[sc.reference] ? (
+                        <Text style={styles.scriptureText}>&quot;{resolvedScriptures[sc.reference]}&quot;</Text>
+                      ) : (
+                        <Text style={[styles.scriptureText, { color: theme.colors.textDisabled }]}>Loading…</Text>
+                      )
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
 
-            <Text style={styles.battleScriptureLabel}>SCRIPTURE (KJV)</Text>
-            <Text style={styles.battleScripture}>&quot;{selected.scripture}&quot;</Text>
+            {/* Declare */}
+            <View style={styles.sectionSurface}>
+              <Text style={styles.sectionHeading}>DECLARE THIS</Text>
+              <Text style={styles.battleDecl}>{`In the name of Jesus, I, ${userName || "warrior"}, decree and declare: ${selected.declaration(userName)}`}</Text>
 
-            <View style={styles.battleDivider} />
+              <TouchableOpacity
+                style={[styles.declareBtn, isSpeaking && styles.declareBtnActive, { marginTop: 12 }]}
+                onPress={handleDeclare}
+                activeOpacity={0.85}
+              >
+                <Ionicons name={isSpeaking ? "stop" : "mic"} size={16} color={isSpeaking ? theme.colors.onAccent : theme.colors.textPrimary} style={{ marginRight: 8 }} />
+                <Text style={[styles.declareBtnText, isSpeaking && styles.declareBtnTextActive]}>
+                  {isSpeaking ? "STOP DECLARATION" : "DECLARE THIS NOW"}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-            <Text style={styles.battleDeclLabel}>YOUR DECLARATION</Text>
-            <Text style={styles.battleDecl}>{selected.declaration(userName)}</Text>
+            {/* Pray */}
+            {selected.prayer && (
+              <View style={styles.sectionSurface}>
+                <Text style={styles.sectionHeading}>PRAY THROUGH IT</Text>
+                <Text style={styles.warPrayerText}>{selected.prayer}</Text>
+              </View>
+            )}
 
-            <TouchableOpacity
-              style={[styles.declareBtn, isSpeaking && styles.declareBtnActive]}
-              onPress={handleDeclare}
-              activeOpacity={0.85}
-            >
-              <Ionicons
-                name={isSpeaking ? "stop" : "mic"}
-                size={16}
-                color={isSpeaking ? theme.colors.onAccent : theme.colors.textPrimary}
-                style={{ marginRight: 8 }}
-              />
-              <Text style={[styles.declareBtnText, isSpeaking && styles.declareBtnTextActive]}>
-                {isSpeaking ? "Stop speaking" : "Declare this now"}
-              </Text>
-            </TouchableOpacity>
+            {/* Fast & Seek God */}
+            {selected.fasting && (
+              <View style={styles.sectionSurface}>
+                <Text style={styles.sectionHeading}>FAST & SEEK GOD</Text>
+                <Text style={styles.warPrayerText}>{selected.fasting}</Text>
+              </View>
+            )}
 
+            {/* Heart check */}
+            {selected.repentance && (
+              <View style={styles.sectionSurface}>
+                <Text style={styles.sectionHeading}>HEART CHECK</Text>
+                <Text style={styles.warPrayerText}>{selected.repentance}</Text>
+              </View>
+            )}
+
+            {/* Prayer prompt (random) — sits before recommended reading */}
+            <View style={styles.sectionSurface}>
+              <Text style={styles.sectionHeading}>PRAYER TIP</Text>
+              <Text style={styles.warPrayerText}>{prayerPrompts[promptIndex]}</Text>
+            </View>
+
+            {/* Recommended reading */}
+            <View style={styles.sectionSurface}>
+              <Text style={styles.sectionHeading}>RECOMMENDED READING</Text>
+              {booksByIssue[selected.recommendedReadingKey || selected.title] ? (
+                booksByIssue[selected.recommendedReadingKey || selected.title].slice(0, 3).map((b, i) => (
+                  <View key={b} style={styles.bookRow}>
+                    <Text style={styles.bookTitle}>{b}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.warPrayerText}>No recommended books for this battle.</Text>
+              )}
+            </View>
 
           </Animated.View>
 
@@ -328,7 +513,7 @@ export default function WarScreen() {
           <View style={styles.prayTipRow}>
             <Ionicons name="mic" size={13} color={theme.colors.accent} style={{ marginRight: 6 }} />
             <Text style={styles.prayTipText}>
-              Tap &quot;Declare this now&quot; and pray until the Spirit stops — don&apos;t rush it.
+              Tap &quot;Declare this now&quot; and pray — don&apos;t rush it.
             </Text>
           </View>
 
@@ -348,18 +533,6 @@ export default function WarScreen() {
 
 
 
-          <View style={styles.warPrayerCard}>
-
-            {/* Recommended reading for this battle */}
-            {booksByIssue[selected.title] && (
-              <View style={{ marginTop: 12 }}>
-                <Text style={[styles.sectionLabel, { marginBottom: 8 }]}>Recommended Reading</Text>
-                {booksByIssue[selected.title].map((b) => (
-                  <Text key={b} style={{ color: theme.colors.textSecondary, fontSize: 13, marginBottom: 4 }}>{b}</Text>
-                ))}
-              </View>
-            )}
-          </View>
 
           <View style={{ height: 120 }} />
         </ScrollView>
@@ -441,18 +614,7 @@ function createStyles(theme: Theme) {
     sectionLabel: { color: c.accent, fontSize: 11, fontWeight: "700", letterSpacing: 1.6 },
     sectionSub: { color: c.textFaint, fontSize: 11 },
 
-    battleCard: {
-      backgroundColor: c.bgSurface, borderRadius: 22, padding: 22,
-      borderWidth: 1, borderColor: c.borderStrong,
-      marginBottom: 14, minHeight: 380,
-    },
-    battleIconWrap: { alignItems: "center", marginBottom: 12 },
-    battleIconCircle: {
-      width: 80, height: 80, borderRadius: 40,
-      backgroundColor: c.tint,
-      borderWidth: 1.5, borderColor: c.borderStrong,
-      alignItems: "center", justifyContent: "center",
-    },
+
     battleIconCircleActive: { backgroundColor: c.tintActive, borderColor: c.tintActive },
     battleTitle: { color: c.textPrimary, fontSize: 26, fontWeight: "800", textAlign: "center", marginBottom: 4 },
     battleVerse: { color: c.accent, fontSize: 12, fontWeight: "600", textAlign: "center", letterSpacing: 1, marginBottom: 14 },
@@ -497,6 +659,34 @@ function createStyles(theme: Theme) {
     tonguesCardTitle: { color: c.textPrimary, fontSize: 14, fontWeight: "700" },
     tonguesCardText: { color: c.textFaint, lineHeight: 21, fontSize: 13, marginBottom: 8 },
     tonguesCardRef: { color: c.textFaint, fontSize: 10, letterSpacing: 1 },
+
+    // New war sections
+    sectionSurface: {
+      backgroundColor: c.bgSurface,
+      borderRadius: 14,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: c.border,
+      marginBottom: 12,
+    },
+    battleHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+    battleIconCircleSmall: {
+      width: 56, height: 56, borderRadius: 28,
+      backgroundColor: c.tint, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: c.borderStrong,
+    },
+    battleVerseSmall: { color: c.accent, fontSize: 12, fontWeight: '600' },
+    battleIntro: { color: c.textMuted, fontSize: 13, lineHeight: 20, marginTop: 6 },
+    sectionHeading: { color: c.textPrimary, fontSize: 13, fontWeight: '800', marginBottom: 8 },
+    howRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
+    howIndex: { width: 36, height: 36, borderRadius: 8, backgroundColor: c.tint, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+    howIndexText: { color: c.onAccent, fontWeight: '800' },
+    howText: { color: c.textPrimary, flex: 1 },
+    scriptureRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
+    scriptureIndex: { width: 28, color: c.accent, fontWeight: '800', marginRight: 8 },
+    scriptureRef: { color: c.textFaint, fontSize: 12, marginBottom: 4 },
+    scriptureText: { color: c.textSecondary, fontStyle: 'italic', lineHeight: 20 },
+    bookRow: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: c.borderSubtle },
+    bookTitle: { color: c.textSecondary },
 
     warPrayerCard: {
       backgroundColor: c.bgSunken, borderRadius: 16, padding: 16,

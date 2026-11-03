@@ -33,8 +33,8 @@ export default function ReaderContent({
         verseRefs.current = {};
         // reset scroll to top
         try {
-            scrollRef.current?.scrollTo({ y: 0, animated: false });
-        } catch (e) {
+            scrollRef.current?.scrollToOffset({ offset: 0, animated: false });
+        } catch {
             // ignore
         }
     }, [chapterData]);
@@ -66,7 +66,7 @@ export default function ReaderContent({
                     // fallback
                     try { fl.scrollToIndex({ index, animated: true }); } catch { }
                 }
-            } catch (e) {
+            } catch {
                 if (index >= 0) {
                     try { fl.scrollToIndex({ index, animated: true }); } catch { }
                 }
@@ -74,7 +74,7 @@ export default function ReaderContent({
         } else if (fl && index >= 0) {
             try { fl.scrollToIndex({ index, animated: true }); } catch { }
         }
-    }, [selectedVerse]);
+    }, [selectedVerse, verseNumbers]);
 
     const onItemLayout = (vNum: string) => (e: LayoutChangeEvent) => {
         const h = e.nativeEvent.layout.height;
@@ -85,7 +85,7 @@ export default function ReaderContent({
     };
 
     const renderItem = ({ item: vNum, index }: { item: string; index: number }) => (
-        <View key={vNum} ref={(r) => (verseRefs.current[vNum] = r)} onLayout={onItemLayout(vNum)}>
+        <View key={vNum} ref={(r) => { verseRefs.current[vNum] = r; }} onLayout={onItemLayout(vNum)}>
             <Verse
                 vNum={vNum}
                 verse={chapterData![vNum]}
@@ -176,7 +176,7 @@ export default function ReaderContent({
 
     return (
         <FlatList
-            ref={(r) => (scrollRef.current = r)}
+            ref={(r) => { scrollRef.current = r; }}
             data={verseNumbers}
             renderItem={renderItem}
             keyExtractor={(v) => v}

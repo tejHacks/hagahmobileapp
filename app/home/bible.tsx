@@ -5,12 +5,12 @@ import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
+  InteractionManager,
   PanResponder,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Theme, useTheme } from "../../components/themes/theme";
@@ -93,6 +93,19 @@ export default function BibleScreen() {
         await AsyncStorage.setItem(TUTORIAL_SEEN_KEY, "1");
       }
     })();
+
+    // warm common books in background after interactions so the UI is not blocked
+    const task = InteractionManager.runAfterInteractions(() => {
+      try {
+        // Prefetch a short list of high-traffic books (Psalms, Matthew, John)
+        prefetchBook("Psa");
+        prefetchBook("Mat");
+        prefetchBook("Jhn");
+      } catch { }
+    });
+    return () => {
+      task.cancel && task.cancel();
+    };
   }, []);
 
   const openBook = async (bookId: string) => {
@@ -110,7 +123,9 @@ export default function BibleScreen() {
     setPhase("reader");
     setLoading(true);
     try {
+      console.log("[DEBUG] openChapter called", { selectedBookId, chapter });
       const data = await getChapterFromDb(selectedBookId, chapter);
+      console.log("[DEBUG] getChapterFromDb returned chapter keys", Object.keys(data).length);
       setChapterData(data);
       const nextChapter = chapter + 1;
       const meta = getBookMeta(selectedBookId);
@@ -174,18 +189,32 @@ export default function BibleScreen() {
     }
   }, [selectedChapter, currentBookMeta, openChapter]);
 
-  const panResponder = useRef(
-    PanResponder.create({
+  const panResponderRef = useRef<any>(null);
+
+  React.useEffect(() => {
+    if (panResponderRef.current) return;
+    panResponderRef.current = PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dx) > Math.abs(g.dy) && Math.abs(g.dx) > 10,
-      onPanResponderRelease: (_, g) => {
-        const threshold = 60;
-        if (g.dx > threshold) goPrevChapter();
-        else if (g.dx < -threshold) goNextChapter();
+      onMoveShouldSetPanResponder: (_evt: any, g: any) => Math.abs(g.dx) > Math.abs(g.dy) && Math.abs(g.dx) > 10,
+      onPanResponderRelease: (_evt: any, g: any) => {
+        const verseThreshold = 40;
+        try {
+          if (!chapterData) return;
+          const list = Object.keys(chapterData).sort((a, b) => Number(a) - Number(b));
+          const idx = selectedVerse ? list.indexOf(selectedVerse) : -1;
+          if (g.dx < -verseThreshold) {
+            // left swipe -> previous
+            if (idx > 0) setSelectedVerse(list[idx - 1]); else goPrevChapter();
+          } else if (g.dx > verseThreshold) {
+            // right swipe -> next
+            if (idx >= 0 && idx < list.length - 1) setSelectedVerse(list[idx + 1]); else goNextChapter();
+          }
+        } catch {
+          // ignore
+        }
       },
-    })
-  ).current;
+    });
+  }, [chapterData, selectedVerse, goPrevChapter, goNextChapter]);
 
   const memoHandleWordPress = React.useCallback((code: string) => {
     const entry = lookupStrongs(code) ?? null;
@@ -199,15 +228,15 @@ export default function BibleScreen() {
 
   const verseRef = (vNum: string) => `${currentBookMeta?.name} ${selectedChapter}:${vNum}`;
 
-  const verseText = (vNum: string) => {
-    if (!chapterData) return "";
-    return chapterData[vNum].words.map((w) => w.t).join(" ");
-  };
 
-  const copyVerse = async (vNum: string) => {
-    await Clipboard.setStringAsync(`${verseRef(vNum)} ${verseText(vNum)}`);
-    showToast("Verse copied");
-  };
+
+  const copyVerse = React.useCallback(async (vNum: string) => {
+    const ref = `${currentBookMeta?.name} ${selectedChapter}:${vNum}`;
+    const text = chapterData ? (chapterData[vNum]?.words || []).map((w) => w.t).join(" ") : "";
+    await Clipboard.setStringAsync(`${ref} ${text}`);
+    setToast({ text: "Verse copied", visible: true });
+    setTimeout(() => setToast({ text: "", visible: false }), 1500);
+  }, [chapterData, currentBookMeta, selectedChapter]);
 
   const memoHandleVerseTap = React.useCallback((vNum: string) => {
     setSelectedVerse((prev) => (prev === vNum ? null : vNum));
@@ -216,7 +245,7 @@ export default function BibleScreen() {
   const memoHandleVerseLongPress = React.useCallback((vNum: string) => {
     setSelectedVerse(null);
     copyVerse(vNum);
-  }, []);
+  }, [copyVerse]);
 
   const copyStrongsEntry = async () => {
     if (!strongsModal) return;
@@ -332,7 +361,11 @@ export default function BibleScreen() {
 
       {loading || !chapterData ? (
         <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color={theme.colors.accent} />
+          {/* Non-blocking skeleton placeholders to avoid intrusive spinner */}
+          <View style={{ width: "60%", height: 18, backgroundColor: theme.colors.bgSurface, borderRadius: 8, marginBottom: 12 }} />
+          {Array.from({ length: 6 }).map((_, i) => (
+            <View key={i} style={{ width: "100%", height: 18, backgroundColor: theme.colors.bgSurface, borderRadius: 6, marginBottom: 10, opacity: 0.9 - i * 0.06 }} />
+          ))}
         </View>
       ) : (
         <ReaderContent
@@ -342,7 +375,7 @@ export default function BibleScreen() {
           selectedChapter={selectedChapter}
           goPrevChapter={goPrevChapter}
           goNextChapter={goNextChapter}
-          panHandlers={panResponder.panHandlers}
+          panHandlers={panResponderRef.current?.panHandlers}
           selectedVerse={selectedVerse}
           handleWordPress={memoHandleWordPress}
           handleVerseTap={memoHandleVerseTap}
@@ -353,6 +386,9 @@ export default function BibleScreen() {
           showStrongs={showStrongs}
         />
       )}
+
+      {/* create pan responder once we know chapterData and verseNumbers */}
+
 
       {/* Floating copy bar when a verse is selected */}
       {selectedVerse && (
@@ -439,16 +475,28 @@ function createStyles(theme: Theme) {
       marginBottom: 10,
       paddingHorizontal: 4,
     },
-    bookGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-    bookChip: {
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      borderRadius: 10,
-      backgroundColor: c.bgSurface,
+    bookCardGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "space-between" },
+    bookCard: {
+      width: "48%",
+      backgroundColor: c.bgElevated,
+      borderRadius: 12,
       borderWidth: 1,
-      borderColor: c.borderSubtle,
+      borderColor: c.border,
+      padding: 12,
+      marginBottom: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      shadowColor: "#000",
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 3,
     },
-    bookChipText: { color: c.textPrimary, fontSize: 13, fontWeight: "600" },
+    bookCardLeft: { width: 56, height: 56, borderRadius: 10, backgroundColor: c.bgSurface, alignItems: "center", justifyContent: "center", marginRight: 12 },
+    bookCardAbbrev: { color: c.textSecondary, fontSize: 14, fontWeight: "800" },
+    bookCardRight: { flex: 1 },
+    bookCardName: { color: c.textPrimary, fontSize: 15, fontWeight: "800" },
+    bookCardMeta: { color: c.textFaint, fontSize: 11, marginTop: 4 },
 
     bookTitle: { color: c.textPrimary, fontSize: 26, fontWeight: "800", marginTop: 8 },
     chapterGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
