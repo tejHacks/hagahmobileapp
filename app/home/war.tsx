@@ -4,6 +4,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Speech from "expo-speech";
+import { speakable } from "../../utils/speech";
+import { markToday } from "../../utils/streak";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -199,7 +201,7 @@ export default function WarScreen() {
     const base = selected.declaration(userName || "warrior");
     const strong = `In the name of Jesus, I, ${userName || "warrior"}, decree and declare: ${base} I break every assignment of the enemy, and I take hold of the promises of God for my life. By the blood of Jesus and the power of the Holy Spirit, I stand firm and walk free.`;
     const text = `${selected.verse}. ${selected.scripture}. ${strong}`;
-    Speech.speak(text, {
+    Speech.speak(speakable(text), {
       rate: 0.9,
       onDone: () => setSpeakingTitle(null),
       onStopped: () => setSpeakingTitle(null),

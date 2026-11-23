@@ -4,7 +4,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as SQLite from "expo-sqlite";
 
 const DB_NAME = "bible.db";
-const DB_VERSION = 2; // bump when build-bible-db.js output changes
+const DB_VERSION = 3; // bump when the bundled bible.db changes (3: repaired 3,465 truncated verses)
 const DB_VERSION_KEY = "hagah_bible_db_version";
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;

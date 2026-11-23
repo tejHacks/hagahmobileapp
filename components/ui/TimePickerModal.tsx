@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Modal,
   StyleSheet,
@@ -8,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useTheme, type Theme } from "../themes/theme";
 
 export type Period = "morning" | "afternoon" | "evening";
 
@@ -25,26 +25,22 @@ const PERIOD_META: Record<
     label: string;
     icon: keyof typeof Ionicons.glyphMap;
     suffix: string;
-    gradient: [string, string];
   }
 > = {
   morning: {
     label: "Morning",
     icon: "sunny",
     suffix: "AM",
-    gradient: ["#3D2000", "#241405"],
   },
   afternoon: {
     label: "Afternoon",
     icon: "partly-sunny",
     suffix: "PM",
-    gradient: ["#2A1800", "#1a0f00"],
   },
   evening: {
     label: "Evening",
     icon: "moon",
     suffix: "PM",
-    gradient: ["#120D1A", "#0d0700"],
   },
 };
 
@@ -60,6 +56,8 @@ export default function TimePickerModal({
 }: TimePickerModalProps) {
   const [selected, setSelected] = useState(currentChip);
   const meta = PERIOD_META[period];
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   // Sync when modal opens
   useEffect(() => {
@@ -83,15 +81,10 @@ export default function TimePickerModal({
 
         <View style={styles.sheet}>
           {/* Header */}
-          <LinearGradient
-            colors={meta.gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.header}
-          >
+          <View style={styles.header}>
             <View style={styles.headerLeft}>
               <View style={styles.iconCircle}>
-                <Ionicons name={meta.icon} size={18} color="#c9923a" />
+                <Ionicons name={meta.icon} size={18} color={theme.colors.accent} />
               </View>
               <View>
                 <Text style={styles.periodLabel}>{meta.label}</Text>
@@ -104,7 +97,7 @@ export default function TimePickerModal({
               <Text style={styles.timeHour}>{selected}</Text>
               <Text style={styles.timeSuffix}>{meta.suffix}</Text>
             </View>
-          </LinearGradient>
+          </View>
 
           {/* Pick a time label */}
           <Text style={styles.pickLabel}>PICK A TIME</Text>
@@ -158,7 +151,7 @@ export default function TimePickerModal({
               }}
               activeOpacity={0.85}
             >
-              <Ionicons name="checkmark" size={16} color="#1a0f00" />
+              <Ionicons name="checkmark" size={16} color={theme.colors.onAccent} />
               <Text style={styles.confirmText}>Set Time</Text>
             </TouchableOpacity>
           </View>
@@ -171,163 +164,82 @@ export default function TimePickerModal({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(8, 4, 0, 0.75)",
-  },
-  sheet: {
-    backgroundColor: "#1a0f00",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderColor: "rgba(201, 146, 58, 0.2)",
-    overflow: "hidden",
-  },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 24,
-    paddingVertical: 22,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "rgba(201, 146, 58, 0.15)",
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-  },
-  iconCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "rgba(201, 146, 58, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(201, 146, 58, 0.3)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  periodLabel: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#f5d49a",
-    letterSpacing: 0.5,
-  },
-  periodSuffix: {
-    fontSize: 11,
-    color: "rgba(201, 146, 58, 0.55)",
-    letterSpacing: 1,
-    marginTop: 2,
-  },
-  timePreview: {
-    alignItems: "flex-end",
-  },
-  timeHour: {
-    fontSize: 40,
-    fontWeight: "800",
-    color: "#c9923a",
-    lineHeight: 44,
-  },
-  timeSuffix: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "rgba(201, 146, 58, 0.6)",
-    letterSpacing: 1.5,
-  },
-
-  pickLabel: {
-    fontSize: 10,
-    color: "#5a3e1b",
-    letterSpacing: 2.5,
-    fontWeight: "700",
-    paddingHorizontal: 24,
-    paddingTop: 22,
-    paddingBottom: 14,
-  },
-
-  grid: {
-    paddingHorizontal: 20,
-    gap: 10,
-  },
-  gridRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  hourBtn: {
-    flex: 1,
-    aspectRatio: 1,
-    borderRadius: 16,
-    backgroundColor: "#2d1800",
-    borderWidth: 0.5,
-    borderColor: "rgba(201, 146, 58, 0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  hourBtnActive: {
-    backgroundColor: "#c9923a",
-    borderColor: "#c9923a",
-    shadowColor: "#c9923a",
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  hourText: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#5a3e1b",
-  },
-  hourTextActive: {
-    color: "#1a0f00",
-  },
-  hourSuffixSmall: {
-    fontSize: 8,
-    color: "rgba(26, 15, 0, 0.7)",
-    fontWeight: "700",
-    letterSpacing: 0.5,
-    marginTop: 1,
-  },
-
-  actions: {
-    flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingTop: 22,
-  },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 15,
-    borderRadius: 14,
-    backgroundColor: "#2d1800",
-    borderWidth: 0.5,
-    borderColor: "rgba(201, 146, 58, 0.2)",
-    alignItems: "center",
-  },
-  cancelText: {
-    fontSize: 14,
-    color: "#5a3e1b",
-    fontWeight: "600",
-  },
-  confirmBtn: {
-    flex: 2,
-    flexDirection: "row",
-    gap: 8,
-    paddingVertical: 15,
-    borderRadius: 14,
-    backgroundColor: "#c9923a",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  confirmText: {
-    fontSize: 14,
-    color: "#1a0f00",
-    fontWeight: "800",
-    letterSpacing: 0.3,
-  },
-});
+function createStyles(theme: Theme) {
+  const c = theme.colors;
+  return StyleSheet.create({
+    overlay: { flex: 1, justifyContent: "flex-end" },
+    backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: c.overlay },
+    sheet: {
+      backgroundColor: c.bgElevated,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      borderWidth: 1,
+      borderColor: c.borderSubtle,
+      overflow: "hidden",
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 24,
+      paddingVertical: 22,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.borderSubtle,
+    },
+    headerLeft: { flexDirection: "row", alignItems: "center", gap: 14 },
+    iconCircle: {
+      width: 42,
+      height: 42,
+      borderRadius: 14,
+      backgroundColor: c.tint,
+      borderWidth: 1,
+      borderColor: c.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    periodLabel: { fontSize: 18, fontWeight: "700", color: c.textPrimary, letterSpacing: 0.3 },
+    periodSuffix: { fontSize: 12, color: c.textMuted, marginTop: 2 },
+    timePreview: { alignItems: "flex-end" },
+    timeHour: { fontSize: 40, fontWeight: "800", color: c.accent, lineHeight: 44 },
+    timeSuffix: { fontSize: 12, fontWeight: "700", color: c.textMuted, letterSpacing: 1.5 },
+    pickLabel: { fontSize: 11, color: c.textMuted, letterSpacing: 2.5, fontWeight: "700", paddingHorizontal: 24, paddingTop: 22, paddingBottom: 14 },
+    grid: { paddingHorizontal: 20, gap: 10 },
+    gridRow: { flexDirection: "row", gap: 10 },
+    hourBtn: {
+      flex: 1,
+      aspectRatio: 1,
+      borderRadius: 16,
+      backgroundColor: c.bgSunken,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.borderSubtle,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    hourBtnActive: { backgroundColor: c.accent, borderColor: c.accent },
+    hourText: { fontSize: 18, fontWeight: "700", color: c.textSecondary },
+    hourTextActive: { color: c.onAccent },
+    hourSuffixSmall: { fontSize: 9, color: c.onAccent, fontWeight: "700", letterSpacing: 0.5, marginTop: 1, opacity: 0.8 },
+    actions: { flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingTop: 22 },
+    cancelBtn: {
+      flex: 1,
+      paddingVertical: 15,
+      borderRadius: 14,
+      backgroundColor: c.bgSunken,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.borderSubtle,
+      alignItems: "center",
+    },
+    cancelText: { fontSize: 14, color: c.textSecondary, fontWeight: "600" },
+    confirmBtn: {
+      flex: 2,
+      flexDirection: "row",
+      gap: 8,
+      paddingVertical: 15,
+      borderRadius: 14,
+      backgroundColor: c.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    confirmText: { fontSize: 14, color: c.onAccent, fontWeight: "800", letterSpacing: 0.3 },
+  });
+}

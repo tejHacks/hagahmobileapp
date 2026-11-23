@@ -7,13 +7,16 @@ import Filters from "./Filters";
 import SearchHeader from "./Header";
 import ResultItem from "./ResultItem";
 
+// The 27 New Testament books, by the codes used in bible.db
+const NT_BOOKS = new Set(["Mat", "Mar", "Luk", "Jhn", "Act", "Rom", "1Co", "2Co", "Gal", "Eph", "Phl", "Col", "1Th", "2Th", "1Ti", "2Ti", "Tit", "Phm", "Heb", "Jas", "1Pe", "2Pe", "1Jo", "2Jo", "3Jo", "Jde", "Rev"]);
+
 export default function SearchPage() {
     const router = useRouter();
     const { theme } = useTheme();
     const styles = {} as any;
 
     const [term, setTerm] = useState("");
-    const [scope, setScope] = useState("all");
+    const [scope, setScope] = useState<"all" | "ot" | "nt">("all");
     const [results, setResults] = useState<any[]>([]);
     const [searching, setSearching] = useState(false);
 
@@ -23,8 +26,8 @@ export default function SearchPage() {
         const rows = await searchAll(term);
         // filter by scope simple rule
         let filtered = rows;
-        if (scope === "ot") filtered = rows.filter(r => r.book && r.book !== "Mat" && r.book !== "Luk" && r.book !== "Jhn" && r.book !== "Rom");
-        if (scope === "nt") filtered = rows.filter(r => r.book && (r.book === "Mat" || r.book === "Luk" || r.book === "Jhn" || r.book === "Rom"));
+        if (scope === "ot") filtered = rows.filter(r => r.book && !NT_BOOKS.has(r.book));
+        if (scope === "nt") filtered = rows.filter(r => r.book && NT_BOOKS.has(r.book));
         setResults(filtered.slice(0, 200));
         setSearching(false);
     }, [term, scope]);

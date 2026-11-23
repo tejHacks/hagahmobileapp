@@ -9,85 +9,85 @@ export const declarations: Declaration[] = [
   {
     id: 1,
     ref: "Genesis 1:26",
-    scripture: "Then God said, 'Let Us make man in Our image, according to Our likeness; let them have dominion over the fish of the sea, over the birds of the air, and over the cattle.'",
+    scripture: "And God said, Let us make man in our image, after our likeness: and let them have dominion over the fish of the sea, and over the fowl of the air, and over the cattle, and over all the earth, and over every creeping thing that creepeth upon the earth.",
     declaration: "I boldly declare that I have dominion. I subdue every obstacle, every enemy, every force that rises against my destiny. I am made in the image of God — I am blessed, I am a blessing to my family, my nation, and the ends of the earth. Riches and honor are in my house. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 2,
     ref: "Jeremiah 29:11",
-    scripture: "For I know the plans I have for thee, declares the LORD, plans to prosper thee and not to harm thee, plans to give thee hope and a future.",
+    scripture: "For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.",
     declaration: "I boldly declare that God's plans for me are good. My future is secured by heaven. I am not forgotten — I walk into my expected end with boldness. Every door ordained for me opens today. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 3,
     ref: "Isaiah 54:17",
-    scripture: "No weapon formed against thee shall prosper, and every tongue which rises against thee in judgment thee shall condemn.",
+    scripture: "No weapon that is formed against thee shall prosper; and every tongue that shall rise against thee in judgment thou shalt condemn. This is the heritage of the servants of the LORD, and their righteousness is of me, saith the LORD.",
     declaration: "I boldly declare that No weapon fashioned against me shall prosper. Every word spoken against my destiny is condemned and falls to the ground. I am covered, I am protected, I walk in divine immunity today. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 4,
     ref: "Philippians 4:13",
-    scripture: "I can do all things through Christ who strengthens me.",
+    scripture: "I can do all things through Christ which strengtheneth me.",
     declaration: "I boldly declare that I can do it. I am strengthened from above. Every task before me today, I accomplish through Christ. Weakness has no place in me. I rise, I build, I finish what I started. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 5,
     ref: "Deuteronomy 28:13",
-    scripture: "And the LORD will make thee the head and not the tail; thee shall be above only, and not be beneath.",
+    scripture: "And the LORD shall make thee the head, and not the tail; and thou shalt be above only, and thou shalt not be beneath; if that thou hearken unto the commandments of the LORD thy God, which I command thee this day, to observe and to do them:",
     declaration: "I boldly declare that I am the head and not the tail. I am above only — I set the pace in my generation. I lead, I do not follow failure. I am positioned at the top because God placed me there. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 6,
     ref: "Psalm 1:3",
-    scripture: "He shall be like a tree planted by the rivers of water, that brings forth its fruit in its season, whose leaf also shall not wither; and whatever he does shall prosper.",
+    scripture: "And he shall be like a tree planted by the rivers of water, that bringeth forth his fruit in his season; his leaf also shall not wither; and whatsoever he doeth shall prosper.",
     declaration: "I boldly declare that I am like a tree planted by rivers of water. Everything I put my hands to prospers. My fruit comes in its season — I do not rush, I do not wither. My life is evergreen. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 7,
     ref: "Romans 8:37",
-    scripture: "Yet in all these things we are more than conquerors through Him who loved us.",
+    scripture: "Nay, in all these things we are more than conquerors through him that loved us.",
     declaration: "I boldly declare that I am more than a conqueror. Not just surviving — thriving. Every battle I face, I come out on top. I do not lose. Christ in me is the guarantee of my victory. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 8,
     ref: "Proverbs 10:22",
-    scripture: "The blessing of the LORD makes one rich, and He adds no sorrow with it.",
+    scripture: "The blessing of the LORD, it maketh rich, and he addeth no sorrow with it.",
     declaration: "I boldly declare that The blessing of the Lord is upon my life. My wealth comes with no sorrow, no compromise, no loss. I am divinely enriched — financially, spiritually, and in every relationship. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 9,
     ref: "Joshua 1:8",
-    scripture: "This Book of the Law shall not depart from thy mouth, but thee shall meditate in it day and night, that thee may observe to do according to all that is written in it. For then thee will make thy way prosperous, and then thee will have good success.",
+    scripture: "This book of the law shall not depart out of thy mouth; but thou shalt meditate therein day and night, that thou mayest observe to do according to all that is written therein: for then thou shalt make thy way prosperous, and then thou shalt have good success.",
     declaration: "I boldly declare that The Word of God does not depart from my mouth. I meditate on it day and night. Because of this, my way is prosperous and I have good success in everything I do. Hagah is my lifestyle. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 10,
     ref: "Isaiah 41:10",
-    scripture: "Fear not, for I am with thee; be not dismayed, for I am thy God. I will strengthen thee, yes, I will help thee, I will uphold thee with My righteous right hand.",
+    scripture: "Fear thou not; for I am with thee: be not dismayed; for I am thy God: I will strengthen thee; yea, I will help thee; yea, I will uphold thee with the right hand of my righteousness.",
     declaration: "I boldly declare that I will not fear. God is with me. I am not dismayed by what I see — my God is bigger. He strengthens me, He helps me, He holds me up. I am upheld by the righteous right hand of God. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 11,
     ref: "Malachi 3:10",
-    scripture: "Bring all the tithes into the storehouse… and try Me now in this, says the LORD of hosts, if I will not open for thee the windows of heaven and pour out for thee such blessing that there will not be room enough to receive it.",
+    scripture: "Bring ye all the tithes into the storehouse, that there may be meat in mine house, and prove me now herewith, saith the LORD of hosts, if I will not open you the windows of heaven, and pour you out a blessing, that there shall not be room enough to receive it.",
     declaration: "I boldly declare that The windows of heaven are open over my life. Blessings are poured out on me beyond what I can contain. My barns overflow. I am a conduit of heaven's abundance on the earth. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 12,
     ref: "3 John 1:2",
-    scripture: "Beloved, I pray that thee may prosper in all things and be in health, just as thy soul prospers.",
+    scripture: "Beloved, I wish above all things that thou mayest prosper and be in health, even as thy soul prospereth.",
     declaration: "I boldly declare that I prosper in all things. My body is healthy, my mind is sound, my soul is flourishing. Prosperity is God's will for me — spirit, soul, and body. I receive it fully today. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 13,
     ref: "Psalm 91:1",
-    scripture: "He who dwells in the secret place of the Most High shall abide under the shadow of the Almighty.",
+    scripture: "He that dwelleth in the secret place of the most High shall abide under the shadow of the Almighty.",
     declaration: "I boldly declare that I dwell in the secret place of the Most High. I am hidden under the shadow of the Almighty. No plague comes near my dwelling. No evil befalls me. I am divinely covered today. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 14,
     ref: "2 Corinthians 9:8",
-    scripture: "And God is able to make all grace abound toward thee, that thee, always having all sufficiency in all things, may have an abundance for every good work.",
+    scripture: "And God is able to make all grace abound toward you; that ye, always having all sufficiency in all things, may abound to every good work:",
     declaration: "I boldly declare that All grace abounds toward me. I have all sufficiency in all things at all times. I lack nothing. I have abundance — not just for myself, but for every good work God assigns to me. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -99,31 +99,31 @@ export const declarations: Declaration[] = [
   {
     id: 16,
     ref: "Luke 6:38",
-    scripture: "Give, and it will be given to thee: good measure, pressed down, shaken together, and running over will be put into thy bosom.",
+    scripture: "Give, and it shall be given unto you; good measure, pressed down, and shaken together, and running over, shall men give into your bosom. For with the same measure that ye mete withal it shall be measured to you again.",
     declaration: "I boldly declare that As I give, it is given back to me — pressed down, shaken together, running over. I am a giver and my harvest is guaranteed. Generosity is the seed of my overflow. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 17,
     ref: "Ephesians 3:20",
-    scripture: "Now to Him who is able to do exceedingly abundantly above all that we ask or think, according to the power that works in us.",
+    scripture: "Now unto him that is able to do exceeding abundantly above all that we ask or think, according to the power that worketh in us,",
     declaration: "I boldly declare that God does exceedingly abundantly above all I ask or think. My expectations are not the ceiling — God's ability is. I expect more, believe more, and receive more than I can imagine. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 18,
     ref: "Isaiah 60:1",
-    scripture: "Arise, shine; for thy light has come! And the glory of the LORD is risen upon thee.",
+    scripture: "Arise, shine; for thy light is come, and the glory of the LORD is risen upon thee.",
     declaration: "I boldly declare that I arise and I shine. The glory of the Lord is risen upon me. Darkness cannot cover me — I carry light. Nations are drawn to the brightness of my rising. I shine today. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 19,
     ref: "Psalm 112:1-3",
-    scripture: "Blessed is the man who fears the LORD… His descendants will be mighty on earth… Wealth and riches will be in his house, and his righteousness endures forever.",
+    scripture: "Praise ye the LORD. Blessed is the man that feareth the LORD, that delighteth greatly in his commandments. His seed shall be mighty upon earth: the generation of the upright shall be blessed. Wealth and riches shall be in his house: and his righteousness endureth for ever.",
     declaration: "I boldly declare that I am blessed. My children are mighty on the earth. Wealth and riches are in my house — not as a wish, but as a covenant promise. My righteousness and my legacy endure forever. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 20,
     ref: "Numbers 23:19",
-    scripture: "God is not a man, that He should lie, nor a son of man, that He should repent. Has He said, and will He not do? Or has He spoken, and will He not make it good?",
+    scripture: "God is not a man, that he should lie; neither the son of man, that he should repent: hath he said, and shall he not do it? or hath he spoken, and shall he not make it good?",
     declaration: "I boldly declare that God is not a man that He should lie. Every promise He has spoken over my life shall come to pass. What He has said, He will do. What He has declared, He will make good. I believe it — it is done. In the mighty name of Jesus Christ, Amen.",
   },
 
@@ -154,7 +154,7 @@ export const declarations: Declaration[] = [
   {
     id: 25,
     ref: "Nehemiah 8:10",
-    scripture: "Then he said unto them, Go thy way, eat the fat, and drink the sweet, and send portions unto them for whom nothing is prepared: for this day is holy unto our Lord: neither be ye sorry; for the joy of the LORD is thy strength.",
+    scripture: "Then he said unto them, Go your way, eat the fat, and drink the sweet, and send portions unto them for whom nothing is prepared: for this day is holy unto our Lord: neither be ye sorry; for the joy of the LORD is your strength.",
     declaration: "I boldly declare that I refuse to be broken or sorrowful! The unstoppable joy of the Lord is my baseline strength today. That joy fortifies my mind, fuels my body, and drives me to be a great blessing to others. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -196,19 +196,19 @@ export const declarations: Declaration[] = [
   {
     id: 32,
     ref: "James 4:7",
-    scripture: "Submit yourselves therefore to God. Resist the devil, and he will flee from thee.",
+    scripture: "Submit yourselves therefore to God. Resist the devil, and he will flee from you.",
     declaration: "I boldly declare that I am completely submitted to the lordship of Jesus Christ. I stand my ground, resist the devil and his operations, and he is fleeing from me in terror right now! In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 33,
     ref: "Philippians 4:19",
-    scripture: "But my God shall supply all thy need according to his riches in glory by Christ Jesus.",
+    scripture: "But my God shall supply all your need according to his riches in glory by Christ Jesus.",
     declaration: "I boldly declare that My God is supplying every single one of my needs today! My bank accounts, my mental health, and my physical needs are fully funded according to His riches in glory. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 34,
     ref: "Luke 10:19",
-    scripture: "Behold, I give unto thee power to tread on serpents and scorpions, and over all the power of the enemy: and nothing shall by any means hurt thee.",
+    scripture: "Behold, I give unto you power to tread on serpents and scorpions, and over all the power of the enemy: and nothing shall by any means hurt you.",
     declaration: "I boldly declare that I walk in supreme spiritual authority! I tread over every demonic trap, snake, and opposition. I dominate over all the power of the enemy, and nothing can harm me. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -244,7 +244,7 @@ export const declarations: Declaration[] = [
   {
     id: 40,
     ref: "1 John 4:4",
-    scripture: "Ye are of God, little children, and have overcome them: because greater is he that is in thee, than he that is in the world.",
+    scripture: "Ye are of God, little children, and have overcome them: because greater is he that is in you, than he that is in the world.",
     declaration: "I boldly declare that Greater is He that lives inside of me than any demon, economic crisis, or failure that is in this world! I am born of God, and I have already overcome them all. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -274,13 +274,13 @@ export const declarations: Declaration[] = [
   {
     id: 45,
     ref: "Psalm 115:14",
-    scripture: "The LORD shall increase thee more and more, thee and thy children.",
+    scripture: "The LORD shall increase you more and more, you and your children.",
     declaration: "I boldly declare that Supernatural increase is hitting my life right now! I am increasing more and more in wisdom, assets, impact, and stature, and this blessing flows directly down to my children. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 46,
     ref: "Exodus 23:25",
-    scripture: "And ye shall serve the LORD thy God, and he shall bless thy bread, and thy water; and I will take sickness away from the midst of thee.",
+    scripture: "And ye shall serve the LORD your God, and he shall bless thy bread, and thy water; and I will take sickness away from the midst of thee.",
     declaration: "I boldly declare that I serve the Lord my God with gladness! My source of income, food, and water are completely blessed, and sickness is entirely banished from the midst of my life. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -316,13 +316,13 @@ export const declarations: Declaration[] = [
   {
     id: 52,
     ref: "Hebrews 13:5",
-    scripture: "Let thy conversation be without covetousness; and be content with such things as ye have: for he hath said, I will never leave thee, nor forsake thee.",
+    scripture: "Let your conversation be without covetousness; and be content with such things as ye have: for he hath said, I will never leave thee, nor forsake thee.",
     declaration: "I boldly declare that I am never alone, never abandoned, and never without help. The Almighty God has given His word that He will never leave me nor forsake me. He is right here with me! In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 53,
     ref: "Matthew 6:33",
-    scripture: "But seek ye first the kingdom of God, and his righteousness; and all these things shall be added unto thee.",
+    scripture: "But seek ye first the kingdom of God, and his righteousness; and all these things shall be added unto you.",
     declaration: "I boldly declare that I seek first the kingdom of God and His righteousness. I don't chase after things; things are supernaturally running after me and being added to my life today! In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -358,7 +358,7 @@ export const declarations: Declaration[] = [
   {
     id: 59,
     ref: "Colossians 2:14-15",
-    scripture: "Blotting out the handwriting of ordinances that was against us... and took it out of the way, nailing it to his cross; And having spoiled principalities and powers, he made a shew of them openly, triumphing over them in it.",
+    scripture: "Blotting out the handwriting of ordinances that was against us, which was contrary to us, and took it out of the way, nailing it to his cross; And having spoiled principalities and powers, he made a shew of them openly, triumphing over them in it.",
     declaration: "I boldly declare that Every negative spiritual decree, curse, or evil handwriting against my bloodline has been completely blotted out and nailed to the cross! My enemies are stripped and defeated. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -370,7 +370,7 @@ export const declarations: Declaration[] = [
   {
     id: 61,
     ref: "Joel 2:25",
-    scripture: "And I will restore to thee the years that the locust hath eaten, the cankerworm, and the caterpiller, and the palmerworm, my great army which I sent among thee.",
+    scripture: "And I will restore to you the years that the locust hath eaten, the cankerworm, and the caterpiller, and the palmerworm, my great army which I sent among you.",
     declaration: "I boldly declare that Supernatural restoration has begun! God is restoring every year, every opportunity, and every resource that was stolen or wasted. My recovery is total and swift. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -382,7 +382,7 @@ export const declarations: Declaration[] = [
   {
     id: 63,
     ref: "2 Corinthians 8:9",
-    scripture: "For ye know the grace of our Lord Jesus Christ, that, though he was rich, yet for thy sakes he became poor, that ye through his poverty might be rich.",
+    scripture: "For ye know the grace of our Lord Jesus Christ, that, though he was rich, yet for your sakes he became poor, that ye through his poverty might be rich.",
     declaration: "I boldly declare that The poverty mindset and lack are shattered over my life! Jesus took my lack at the cross so that through His divine exchange, I might be made rich and self-sufficient. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -400,7 +400,7 @@ export const declarations: Declaration[] = [
   {
     id: 66,
     ref: "Philippians 4:7",
-    scripture: "And the peace of God, which passeth all understanding, shall keep thy hearts and minds through Christ Jesus.",
+    scripture: "And the peace of God, which passeth all understanding, shall keep your hearts and minds through Christ Jesus.",
     declaration: "I boldly declare that The unexplainable, supernatural peace of God guards my heart and stands watch over my mind today. Chaos may surround me, but calm rules inside me. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -424,7 +424,7 @@ export const declarations: Declaration[] = [
   {
     id: 70,
     ref: "Romans 8:11",
-    scripture: "But if the Spirit of him that raised up Jesus from the dead dwell in thee, he that raised up Christ from the dead shall also quicken thy mortal bodies by his Spirit that dwelleth in thee.",
+    scripture: "But if the Spirit of him that raised up Jesus from the dead dwell in you, he that raised up Christ from the dead shall also quicken your mortal bodies by his Spirit that dwelleth in you.",
     declaration: "I boldly declare that The exact same Spirit that raised Jesus from the dead lives inside of me! Therefore, my physical body is supernaturally energized, quickened, and made alive. Every organ, cell, and bone functions in absolute perfection. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -478,7 +478,7 @@ export const declarations: Declaration[] = [
   {
     id: 79,
     ref: "Zechariah 9:12",
-    scripture: "Turn thee to the strong hold, ye prisoners of hope: even to day do I declare that I will render double unto thee;",
+    scripture: "Turn you to the strong hold, ye prisoners of hope: even to day do I declare that I will render double unto thee;",
     declaration: "I boldly declare that My hope is anchored in an unshakeable stronghold! Heaven declares over my life today that for every past shame, loss, or delay, God is releasing a double portion of restoration and favor. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -502,7 +502,7 @@ export const declarations: Declaration[] = [
   {
     id: 83,
     ref: "Galatians 3:13-14",
-    scripture: "Christ hath redeemed us from the curse of the law, being made a curse for us... That the blessing of Abraham might come on the Gentiles through Jesus Christ;",
+    scripture: "Christ hath redeemed us from the curse of the law, being made a curse for us: for it is written, Cursed is every one that hangeth on a tree: That the blessing of Abraham might come on the Gentiles through Jesus Christ; that we might receive the promise of the Spirit through faith.",
     declaration: "I boldly declare that Every ancestral curse, marital delay, or generational limitation is completely broken off my life! Christ took the curse, and I walk in the unstoppable, global blessing of Abraham today. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -616,7 +616,7 @@ export const declarations: Declaration[] = [
   {
     id: 102,
     ref: "Philippians 4:6",
-    scripture: "Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let thy requests be made known unto God.",
+    scripture: "Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God.",
     declaration: "I boldly declare that Anxiety and worry are completely banned from my heart today! I am anxious for absolutely nothing. I take every issue to the throne room in prayer and release absolute thanksgiving. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -652,7 +652,7 @@ export const declarations: Declaration[] = [
   {
     id: 108,
     ref: "Colossians 3:1-2",
-    scripture: "If ye then be risen with Christ, seek those things which are above... Set thy affection on things above, not on things on the earth.",
+    scripture: "If ye then be risen with Christ, seek those things which are above, where Christ sitteth on the right hand of God. Set your affection on things above, not on things on the earth.",
     declaration: "I boldly declare that My focus is entirely elevated! I refuse to be distracted by earthly petty drama, gossip, or worldly systems. I align my mind, my affections, and my standards with the highest kingdom principles. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -694,7 +694,7 @@ export const declarations: Declaration[] = [
   {
     id: 115,
     ref: "Psalm 1:1-2",
-    scripture: "Blessed is the man that walketh not in the counsel of the ungodly... But his delight is in the law of the LORD; and in his law doth he meditate day and night.",
+    scripture: "Blessed is the man that walketh not in the counsel of the ungodly, nor standeth in the way of sinners, nor sitteth in the seat of the scornful. But his delight is in the law of the LORD; and in his law doth he meditate day and night.",
     declaration: "I boldly declare that I do not take advice from ungodly or negative sources. My ultimate joy is found in God's word, and because I meditate on it day and night, I am supernaturally set up for non-stop prosperity. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -706,7 +706,7 @@ export const declarations: Declaration[] = [
   {
     id: 117,
     ref: "Psalm 105:15",
-    scripture: "Saying, Touch not mine anointed, and do my prophets do no harm.",
+    scripture: "Saying, Touch not mine anointed, and do my prophets no harm.",
     declaration: "I boldly declare that I am heavily anointed by the Holy Ghost! I carry a spiritual 'Touch Not' sign over my life, my health, my business, and my family. No demonic force can cause me harm. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -718,7 +718,7 @@ export const declarations: Declaration[] = [
   {
     id: 119,
     ref: "Psalm 24:7",
-    scripture: "Lift up thy heads, O ye gates; and be ye lift up, ye everlasting doors; and the King of glory shall come in.",
+    scripture: "Lift up your heads, O ye gates; and be ye lift up, ye everlasting doors; and the King of glory shall come in.",
     declaration: "I boldly declare that Every ancient demonic door or roadblock blocking my progress must shatter right now! The King of glory lives inside of me, therefore my way is completely cleared for advancement. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -850,7 +850,7 @@ export const declarations: Declaration[] = [
   {
     id: 141,
     ref: "Galatians 2:20",
-    scripture: "I am crucified with Christ: nevertheless I live; yet not I, but Christ liveth in me: and the life which I now live in the flesh I live by the faith of the Son of God, who loved me, and gave himself for my soul.",
+    scripture: "I am crucified with Christ: nevertheless I live; yet not I, but Christ liveth in me: and the life which I now live in the flesh I live by the faith of the Son of God, who loved me, and gave himself for me.",
     declaration: "I boldly declare that My old life of failure, shame, and generational limitations is completely dead and buried! I live a fresh, powerful life right now because Christ resides inside of me, driving me forward by His unshakeable faith. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -862,13 +862,13 @@ export const declarations: Declaration[] = [
   {
     id: 143,
     ref: "Isaiah 61:3",
-    scripture: "To appoint unto them that mourn in Zion, to give them beauty for ashes, the oil of joy for mourning, the garment of praise for the spirit of heaviness; that they might be called trees of righteousness, the planting of the LORD, that he might be glorified.",
+    scripture: "To appoint unto them that mourn in Zion, to give unto them beauty for ashes, the oil of joy for mourning, the garment of praise for the spirit of heaviness; that they might be called trees of righteousness, the planting of the LORD, that he might be glorified.",
     declaration: "I boldly declare that I strip off every form of depression, grief, and heaviness right now and put on a brilliant garment of praise! God is trading my old mistakes for absolute beauty, turning me into a massive, rooted tree of righteousness. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 144,
     ref: "Romans 8:38-39",
-    scripture: "For I am persuaded, that neither death, nor life, nor angels, nor principalities, nor powers... shall be able to separate us from the love of God, which is in Christ Jesus our Lord.",
+    scripture: "For I am persuaded, that neither death, nor life, nor angels, nor principalities, nor powers, nor things present, nor things to come, Nor height, nor depth, nor any other creature, shall be able to separate us from the love of God, which is in Christ Jesus our Lord.",
     declaration: "I boldly declare that I am completely, unshakeably persuaded! No demonic principalities, human powers, current crises, or future unknowns can ever break me away from the massive love of God anchored over my life. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -880,7 +880,7 @@ export const declarations: Declaration[] = [
   {
     id: 146,
     ref: "Philippians 1:6",
-    scripture: "Being confident of this very thing, that he which hath begun a good work in thee will perform it until the day of Jesus Christ:",
+    scripture: "Being confident of this very thing, that he which hath begun a good work in you will perform it until the day of Jesus Christ:",
     declaration: "I boldly declare that I have 100% confidence that God will never leave my life half-done! The incredible projects, career path, and character growth He started in me are being supernaturally finished and perfected day by day. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -892,7 +892,7 @@ export const declarations: Declaration[] = [
   {
     id: 148,
     ref: "James 1:5",
-    scripture: "If any of thee lack wisdom, let him ask of God, that giveth to all men liberally, and upbraideth not; and it shall be given him.",
+    scripture: "If any of you lack wisdom, let him ask of God, that giveth to all men liberally, and upbraideth not; and it shall be given him.",
     declaration: "I boldly declare that I do not struggle in confusion or make foolish choices! I have asked God for tactical direction, and He is pouring out an absolute abundance of pure, divine wisdom into my mind right now without any judgment. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -904,7 +904,7 @@ export const declarations: Declaration[] = [
   {
     id: 150,
     ref: "1 Thessalonians 5:24",
-    scripture: "Faithful is he that calleth thee, who also will do it.",
+    scripture: "Faithful is he that calleth you, who also will do it.",
     declaration: "I boldly declare that The vision, goals, and deep assignments placed over my life are not dependent on my human frailties. The God who called me into this destiny is completely faithful, and He is supernaturally making it happen! In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -922,7 +922,7 @@ export const declarations: Declaration[] = [
   {
     id: 153,
     ref: "Isaiah 55:12",
-    scripture: "For ye shall go out with joy, and be led forth with peace: the mountains and the hills shall break forth before thee into singing, and all the trees of the field shall clap their hands.",
+    scripture: "For ye shall go out with joy, and be led forth with peace: the mountains and the hills shall break forth before you into singing, and all the trees of the field shall clap their hands.",
     declaration: "I boldly declare that I step out of my house today with explosive joy and I am guided accurately by deep peace! Obstacles are singing for my sake, and prosperity is clapping its hands for my advancement. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -940,7 +940,7 @@ export const declarations: Declaration[] = [
   {
     id: 156,
     ref: "Hebrews 10:35",
-    scripture: "Cast not away therefore thy confidence, which hath great recompence of reward.",
+    scripture: "Cast not away therefore your confidence, which hath great recompence of reward.",
     declaration: "I boldly declare that I refuse to throw away my bold confidence or surrender to doubt! I hold my ground, stay fully bold, and look forward to the massive, undeniable reward that my faith is bringing to pass. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -952,13 +952,13 @@ export const declarations: Declaration[] = [
   {
     id: 158,
     ref: "Isaiah 44:26",
-    scripture: "That confirmeth the word of his servant, and performeth the counsel of his messengers;",
+    scripture: "That confirmeth the word of his servant, and performeth the counsel of his messengers; that saith to Jerusalem, Thou shalt be inhabited; and to the cities of Judah, Ye shall be built, and I will raise up the decayed places thereof:",
     declaration: "I boldly declare that Heaven is fully backing my voice today! As a servant and messenger of the Most High, every scriptural word and declaration I speak over my day is being rapidly confirmed and performed by God. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 159,
     ref: "1 John 5:14-15",
-    scripture: "And this is the confidence that we have in him, that, if we ask any thing according to his will, he heareth us: And if we know that he hear us... we have the petitions that we desired of him.",
+    scripture: "And this is the confidence that we have in him, that, if we ask any thing according to his will, he heareth us: And if we know that he hear us, whatsoever we ask, we know that we have the petitions that we desired of him.",
     declaration: "I boldly declare that I have 100% confidence when I pray according to the Word! My God hears me instantly, and because He hears me, I know for a definitive fact that the answers to my requests are already securely mine. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -982,7 +982,7 @@ export const declarations: Declaration[] = [
   {
     id: 163,
     ref: "Isaiah 51:16",
-    scripture: "And I have put my words in thy mouth, and I have covered thee in the shadow of mine hand,",
+    scripture: "And I have put my words in thy mouth, and I have covered thee in the shadow of mine hand, that I may plant the heavens, and lay the foundations of the earth, and say unto Zion, Thou art my people.",
     declaration: "I boldly declare that My mouth is a weapon of mass creation! God has placed His exact, raw words directly onto my tongue and covered me under the protective shadow of His hand so I can build my world safely. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -1000,7 +1000,7 @@ export const declarations: Declaration[] = [
   {
     id: 166,
     ref: "Colossians 4:6",
-    scripture: "Let thy speech be alway with grace, seasoned with salt, that ye may know how ye ought to answer every man.",
+    scripture: "Let your speech be alway with grace, seasoned with salt, that ye may know how ye ought to answer every man.",
     declaration: "I boldly declare that My words carry weight, heavy influence, and attractive grace! My speech is deeply seasoned with spiritual wisdom, ensuring I always know exactly how to close deals and command respect. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -1012,7 +1012,7 @@ export const declarations: Declaration[] = [
   {
     id: 168,
     ref: "1 Peter 5:10",
-    scripture: "But the God of all grace... after that ye have suffered a while, make thee perfect, stablish, strengthen, settle thee.",
+    scripture: "But the God of all grace, who hath called us unto his eternal glory by Christ Jesus, after that ye have suffered a while, make you perfect, stablish, strengthen, settle you.",
     declaration: "I boldly declare that My testing seasons are officially over! The God of all grace is stepping into my situation right now to make me perfect, establish my feet, supernaturally strengthen my hands, and fully settle my life. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -1084,13 +1084,13 @@ export const declarations: Declaration[] = [
   {
     id: 180,
     ref: "Deuteronomy 30:19",
-    scripture: "I call heaven and earth to record this day against you, that I have set before you life and death, blessing and cursing: therefore choose life, that both thou and thy seed may live.",
+    scripture: "I call heaven and earth to record this day against you, that I have set before you life and death, blessing and cursing: therefore choose life, that both thou and thy seed may live:",
     declaration: "I boldly declare that I choose life, and I walk in the blessing that is mine. My seed is covered, my home is preserved, and my future is secured by the Lord. In the mighty name of Jesus Christ, Amen.",
   },
   {
     id: 181,
     ref: "Philippians 1:21",
-    scripture: "For me to live is Christ, and to die is gain.",
+    scripture: "For to me to live is Christ, and to die is gain.",
     declaration: "I boldly declare that my life is hidden in Christ, and my days are governed by heavenly purpose. I live with power, conviction, and eternal perspective. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -1126,7 +1126,7 @@ export const declarations: Declaration[] = [
   {
     id: 187,
     ref: "Isaiah 57:19",
-    scripture: "I create the fruit of the lips; peace, peace to him that is far off, and to him that is near, saith the LORD; and I will heal him.",
+    scripture: "I create the fruit of the lips; Peace, peace to him that is far off, and to him that is near, saith the LORD; and I will heal him.",
     declaration: "I boldly declare that my lips release peace and healing. I speak life over my soul, my body, and my household, and the Lord is restoring all that was broken. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -1162,7 +1162,7 @@ export const declarations: Declaration[] = [
   {
     id: 193,
     ref: "Isaiah 63:14",
-    scripture: "As a beast goeth down into the valley, and the Spirit of the LORD caused him to rest: so didst thou lead thy people, to make thyself a glorious name.",
+    scripture: "As a beast goeth down into the valley, the Spirit of the LORD caused him to rest: so didst thou lead thy people, to make thyself a glorious name.",
     declaration: "I boldly declare that the Spirit of the Lord leads me into rest, order, and glory. I am carried by His presence into my divine purpose and destiny. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -1174,7 +1174,7 @@ export const declarations: Declaration[] = [
   {
     id: 195,
     ref: "Romans 1:16",
-    scripture: "For I am not ashamed of the gospel of Christ: for it is the power of God unto salvation to every one that believeth.",
+    scripture: "For I am not ashamed of the gospel of Christ: for it is the power of God unto salvation to every one that believeth; to the Jew first, and also to the Greek.",
     declaration: "I boldly declare that I am unashamed of the gospel and unafraid to carry the power of God into every sphere of my life. My testimony will not be silenced. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -1222,7 +1222,7 @@ export const declarations: Declaration[] = [
   {
     id: 203,
     ref: "Ephesians 3:16",
-    scripture: "That he would grant you, according to the riches of his glory, to be strengthened with might by his Spirit in the inner man.",
+    scripture: "That he would grant you, according to the riches of his glory, to be strengthened with might by his Spirit in the inner man;",
     declaration: "I boldly declare that I am strengthened with might by the Spirit of God. My inner man is firm, my spirit is alive, and my endurance is supernatural. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -1300,7 +1300,7 @@ export const declarations: Declaration[] = [
   {
     id: 216,
     ref: "Psalm 10:17",
-    scripture: "LORD, thou hast heard the desire of the humble: thou wilt prepare their heart, thou wilt cause thine ear to hear.",
+    scripture: "LORD, thou hast heard the desire of the humble: thou wilt prepare their heart, thou wilt cause thine ear to hear:",
     declaration: "I boldly declare that the Lord hears the cry of the humble and prepares my heart for His answer. My prayers move heaven and earth. In the mighty name of Jesus Christ, Amen.",
   },
   {
@@ -1318,7 +1318,7 @@ export const declarations: Declaration[] = [
   {
     id: 219,
     ref: "Romans 5:1",
-    scripture: "Therefore being justified by faith, we have peace with God through our Lord Jesus Christ.",
+    scripture: "Therefore being justified by faith, we have peace with God through our Lord Jesus Christ:",
     declaration: "I boldly declare that I stand justified by faith and live in peace with God. My conscience is clean, my spirit is free, and my heart rests in Christ. In the mighty name of Jesus Christ, Amen.",
   },
   {

@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { setAudioModeAsync } from "expo-audio";
 import { Audio } from "expo-av";
@@ -21,6 +22,9 @@ import { captureRef } from "react-native-view-shot";
 import { Theme, useTheme } from "../../components/themes/theme";
 import Navbar from "../../components/ui/Navbar";
 import ShareCard from "../../components/ui/ShareCard";
+import StreakCard from "../../components/ui/StreakCard";
+import { speakable } from "../../utils/speech";
+import { markToday } from "../../utils/streak";
 import { declarations } from "../../data/declarations";
 import { isBookmarked, toggleBookmark } from "../../utils/bookmarks";
 
@@ -69,22 +73,16 @@ const SOUND_FILES = [
   },
 ];
 
-// 8 preset gradients for the shareable declaration card. Kept all
-// reasonably dark/saturated so the white card text (see ShareCard.tsx)
-// reads cleanly against every one of them without per-gradient tuning.
+// Share-card styles. All dark enough for the white card text (see ShareCard.tsx).
 const CARD_GRADIENTS: {
   name: string;
   colors: readonly [string, string, ...string[]];
 }[] = [
-    { name: "Golden Dusk", colors: ["#2A1B0F", "#B8860B"] },
-    { name: "Royal Purple", colors: ["#1a0b2e", "#6a3093"] },
-    { name: "Deep Ocean", colors: ["#0b1220", "#3E6FA3"] },
-    { name: "Forest Night", colors: ["#10180F", "#3E5B2E"] },
-    { name: "Crimson Ember", colors: ["#1F1410", "#A33D1F"] },
-    { name: "Rose Gold", colors: ["#3d1f2b", "#c9727a"] },
-    { name: "Midnight Teal", colors: ["#08191c", "#0f6d6b"] },
-    { name: "Charcoal Slate", colors: ["#111214", "#4b4f58"] },
-  ];
+  { name: "Sage", colors: ["#1F3B33", "#2F5D50"] },
+  { name: "Night", colors: ["#0F1312", "#24302B"] },
+  { name: "Ink", colors: ["#1D1B17", "#3D3A33"] },
+  { name: "Olive", colors: ["#2A2A1A", "#5A5A33"] },
+];
 
 function getDailyDeclaration(dayOffset = 0) {
   const start = new Date("2026-01-01").getTime();
@@ -105,6 +103,7 @@ function getDisplayDate(dayOffset: number) {
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -142,7 +141,7 @@ export default function HomeScreen() {
   const isMountedRef = useRef(true);
   const cardRef = useRef<View>(null);
 
-  const fullSpeechText = `${daily.ref}. ${daily.scripture}. Today's declaration. ${daily.declaration}`;
+  const fullSpeechText = speakable(`${daily.ref}. ${daily.scripture}. Today's declaration. ${daily.declaration}`);
   const combinedText = `${daily.ref}\n"${daily.scripture}"\n\nToday's Declaration:\n${daily.declaration}`;
   const shareCaption = `✦ HAGAH\n\n${daily.ref}\n\n"${daily.scripture}"\n\nToday's Declaration:\n${daily.declaration}\n\nSpeak the Word. Shape your world.\n\nGet Hagah on Google Play:\n${PLAY_STORE_URL}`;
 
@@ -274,6 +273,7 @@ export default function HomeScreen() {
     if (!isMountedRef.current) return;
 
     setIsPlaying(true);
+    void markToday();
     Speech.speak(
       "Let's meditate on this together. I'll read it to you five times — say it out loud with me each time.",
       {
@@ -454,6 +454,11 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* STREAK */}
+        <View style={styles.streakWrap}>
+          <StreakCard />
+        </View>
+
         {/* DAY / DATE */}
         <View style={styles.dateRow}>
           <TouchableOpacity
@@ -536,6 +541,24 @@ export default function HomeScreen() {
             {isPlaying ? "Tap to stop" : "Read it. Speak it. Let the Word settle."}
           </Text>
         </View>
+
+        {/* SCRIPTURE DECLARATIONS */}
+        <TouchableOpacity
+          style={styles.declareCard}
+          onPress={() => router.push("/home/declare" as never)}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Open scripture declarations"
+        >
+          <View style={styles.declareIcon}>
+            <Ionicons name="megaphone-outline" size={20} color={theme.colors.accent} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.declareTitle}>Declare the Word</Text>
+            <Text style={styles.declareSub}>63 KJV verses to speak over your life, read aloud if you like.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
+        </TouchableOpacity>
 
         {/* QUICK ACTIONS */}
         <View style={styles.actionsSection}>
@@ -767,6 +790,29 @@ function createStyles(theme: Theme) {
   const c = theme.colors;
 
   return StyleSheet.create({
+    streakWrap: { marginBottom: 18 },
+    declareCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginTop: 18,
+      marginBottom: 6,
+      padding: 16,
+      borderRadius: 18,
+      backgroundColor: theme.colors.bgElevated,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.borderSubtle,
+    },
+    declareIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: 13,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.colors.tint,
+    },
+    declareTitle: { fontSize: 16, fontWeight: "700", color: theme.colors.textPrimary },
+    declareSub: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2 },
     safe: { flex: 1, backgroundColor: c.bgBase },
     scroll: { paddingHorizontal: 22, paddingTop: 8 },
 

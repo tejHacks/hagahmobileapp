@@ -24,7 +24,7 @@ const ShareCard = React.forwardRef<View, Props>(function ShareCard(
 ) {
     const colors = gradient && gradient.length >= 2
         ? gradient
-        : (["#2A1B0F", "#B8860B"] as const);
+        : (["#1F3B33", "#2F5D50"] as const);
 
     const Content = (
         <View style={styles.content}>
