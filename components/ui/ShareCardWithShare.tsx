@@ -34,7 +34,7 @@ export default function ShareCardWithShare({
     image?: any;
 }) {
     const theme = useTheme().theme;
-    const cardRef = useRef<View>(null);
+    const cardRef = useRef<React.ComponentRef<typeof View>>(null);
     const [loading, setLoading] = useState(false);
     const [selected, setSelected] = useState(0);
 

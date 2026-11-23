@@ -7,7 +7,6 @@
     "icon": "./assets/images/logo.png",
     "scheme": "hagah",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "buildNumber": "4",
       "supportsTablet": true,
@@ -23,7 +22,6 @@
         "backgroundColor": "#1a0f00",
         "foregroundImage": "./assets/images/logo.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.olateju.hagahapp",
       "permissions": [
@@ -64,7 +62,10 @@
       "expo-web-browser",
       "expo-audio",
       "expo-asset",
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-image",
+      "expo-sharing",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true,

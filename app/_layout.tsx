@@ -1,5 +1,4 @@
 // import { Stack } from "expo-router";
-// import "../global.css";
 
 // export default function RootLayout() {
 //   // No redirect logic needed here — index.tsx checks AsyncStorage's
@@ -11,7 +10,6 @@
 
 import { Stack } from "expo-router";
 import { ThemeProvider } from "../components/themes/theme";
-import "../global.css";
 
 export default function RootLayout() {
   // No redirect logic needed here — index.tsx checks AsyncStorage's

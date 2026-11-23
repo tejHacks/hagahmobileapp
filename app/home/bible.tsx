@@ -1,11 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  InteractionManager,
   PanResponder,
   StyleSheet,
   Text,
@@ -95,16 +94,17 @@ export default function BibleScreen() {
     })();
 
     // warm common books in background after interactions so the UI is not blocked
-    const task = InteractionManager.runAfterInteractions(() => {
+    // (InteractionManager was removed in React Native 0.88: wait a moment instead)
+    const task = setTimeout(() => {
       try {
         // Prefetch a short list of high-traffic books (Psalms, Matthew, John)
         prefetchBook("Psa");
         prefetchBook("Mat");
         prefetchBook("Jhn");
       } catch { }
-    });
+    }, 800);
     return () => {
-      task.cancel && task.cancel();
+      clearTimeout(task);
     };
   }, []);
 

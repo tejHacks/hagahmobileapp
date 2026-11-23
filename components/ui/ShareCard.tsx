@@ -18,7 +18,7 @@ type Props = {
     gradient?: readonly [string, string, ...string[]];
 };
 
-const ShareCard = React.forwardRef<View, Props>(function ShareCard(
+const ShareCard = React.forwardRef<React.ComponentRef<typeof View>, Props>(function ShareCard(
     { declaration, style, image, gradient },
     ref
 ) {
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     },
     bg: { flex: 1, justifyContent: "center" },
     darken: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         backgroundColor: "rgba(0,0,0,0.35)",
     },
     content: {

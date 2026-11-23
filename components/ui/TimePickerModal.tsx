@@ -168,7 +168,7 @@ function createStyles(theme: Theme) {
   const c = theme.colors;
   return StyleSheet.create({
     overlay: { flex: 1, justifyContent: "flex-end" },
-    backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: c.overlay },
+    backdrop: { ...StyleSheet.absoluteFill, backgroundColor: c.overlay },
     sheet: {
       backgroundColor: c.bgElevated,
       borderTopLeftRadius: 28,

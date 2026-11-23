@@ -1,7 +1,6 @@
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { setAudioModeAsync } from "expo-audio";
-import { Audio } from "expo-av";
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from "expo-audio";
 import * as Clipboard from "expo-clipboard";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Sharing from "expo-sharing";
@@ -136,10 +135,10 @@ export default function HomeScreen() {
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const soundRef = useRef<AudioPlayer | null>(null);
   const pulse = useRef(new Animated.Value(1)).current;
   const isMountedRef = useRef(true);
-  const cardRef = useRef<View>(null);
+  const cardRef = useRef<React.ComponentRef<typeof View>>(null);
 
   const fullSpeechText = speakable(`${daily.ref}. ${daily.scripture}. Today's declaration. ${daily.declaration}`);
   const combinedText = `${daily.ref}\n"${daily.scripture}"\n\nToday's Declaration:\n${daily.declaration}`;
@@ -171,10 +170,10 @@ export default function HomeScreen() {
           const currentSound = soundRef.current;
           soundRef.current = null;
           try {
-            await currentSound.stopAsync();
+            currentSound.pause();
           } catch { }
           try {
-            await currentSound.unloadAsync();
+            currentSound.remove();
           } catch { }
         }
       })();
@@ -373,7 +372,8 @@ export default function HomeScreen() {
   const handleSoundSelect = async (soundId: number) => {
     try {
       if (soundRef.current) {
-        await soundRef.current.unloadAsync();
+        soundRef.current.pause();
+        soundRef.current.remove();
         soundRef.current = null;
       }
 
@@ -383,13 +383,9 @@ export default function HomeScreen() {
 
       if (!selected) return;
 
-      const { sound } = await Audio.Sound.createAsync(
-        selected.file,
-        {
-          shouldPlay: true,
-          isLooping: true,
-        },
-      );
+      const sound = createAudioPlayer(selected.file);
+      sound.loop = true;
+      sound.play();
 
       soundRef.current = sound;
       setActiveSound(soundId);
@@ -402,8 +398,8 @@ export default function HomeScreen() {
 
   const handleToggleSound = async () => {
     if (soundPlaying && soundRef.current) {
-      await soundRef.current.stopAsync();
-      await soundRef.current.unloadAsync();
+      soundRef.current.pause();
+      soundRef.current.remove();
       soundRef.current = null;
       setSoundPlaying(false);
       setActiveSound(null);

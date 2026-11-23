@@ -24,7 +24,7 @@ export default function ReaderContent({
     showStrongs = true,
 }: any) {
     const scrollRef = useRef<FlatList<string> | null>(null);
-    const verseRefs = useRef<Record<string, View | null>>({});
+    const verseRefs = useRef<Record<string, React.ComponentRef<typeof View> | null>>({});
     const itemHeights = useRef<Record<string, number>>({});
     const averageHeight = useRef<number>(0);
     const headerHeight = useRef<number>(0);
