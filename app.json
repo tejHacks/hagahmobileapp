@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "buildNumber": "4",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "infoPlist": {
         "UIBackgroundModes": [
           "audio"
