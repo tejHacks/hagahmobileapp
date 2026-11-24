@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Theme,
   ThemeName,
+  fonts,
   themeOrder,
   themes,
   useTheme,
@@ -232,7 +233,8 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <View style={styles.topBar}>
-        <Text style={styles.topTitle}>SETTINGS</Text>
+        <Text style={styles.topEyebrow}>PREFERENCES</Text>
+        <Text style={styles.topTitle}>Settings</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -408,7 +410,7 @@ export default function SettingsScreen() {
           <Text style={styles.verseRef}>Joshua 1:8</Text>
         </View>
 
-        <View style={{ height: 110 }} />
+        <View style={{ height: 150 }} />
       </ScrollView>
 
       <TimePickerModal
@@ -430,20 +432,14 @@ function createStyles(theme: Theme) {
     safe: { flex: 1, backgroundColor: c.bgBase },
 
     topBar: {
-      backgroundColor: c.bgSunken,
-      borderBottomWidth: 1,
-      borderBottomColor: c.borderSubtle,
-      paddingHorizontal: 22,
-      paddingVertical: 18,
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 6,
     },
-    topTitle: {
-      fontSize: 12,
-      fontWeight: "700",
-      color: c.accent,
-      letterSpacing: 4,
-    },
+    topEyebrow: { color: c.accent, fontSize: 11, fontWeight: "700", letterSpacing: 2.6 },
+    topTitle: { fontFamily: fonts.serif, color: c.textPrimary, fontSize: 30, fontWeight: "700", marginTop: 2 },
 
-    scroll: { paddingHorizontal: 20, paddingTop: 22, gap: 10 },
+    scroll: { paddingHorizontal: 20, paddingTop: 12, gap: 10 },
 
     sectionLabel: {
       fontSize: 9,

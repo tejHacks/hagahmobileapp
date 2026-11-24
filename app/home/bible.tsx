@@ -1,67 +1,87 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from 'expo-router';
 import * as Clipboard from "expo-clipboard";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  PanResponder,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PanResponder, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import BooksGrid from "../../components/bible/BooksGrid";
+import ChaptersGrid from "../../components/bible/ChaptersGrid";
+import ReaderContent from "../../components/bible/ReaderContent";
+import ReadingSettingsModal, { FONT_SIZES } from "../../components/bible/ReadingSettingsModal";
+import SelectionBar from "../../components/bible/SelectionBar";
+import StrongsModal from "../../components/bible/StrongsModal";
+import TutorialModal from "../../components/bible/TutorialModal";
 import { Theme, useTheme } from "../../components/themes/theme";
 import Navbar from "../../components/ui/Navbar";
 import {
   BibleChapter,
-  bibleBooks,
   getBookMeta,
   getChapterFromDb,
+  plainVerseText,
   prefetchBook,
   prefetchChapter,
 } from "../../data/bible";
 import { lookupStrongs, type StrongsEntry } from "../../utils/strongs";
-import FontSettingsModal from "./bible/_FontSettingsModal";
-import BooksGrid from "./bible/BooksGrid";
-import ChaptersGrid from "./bible/ChaptersGrid";
-import ReaderContent from "./bible/ReaderContent";
-import SelectionBar from "./bible/SelectionBar";
-import StrongsModal from "./bible/StrongsModal";
-import TutorialModal from "./bible/TutorialModal";
 
 const LAST_POSITION_KEY = "hagah_bible_last_position";
 const TUTORIAL_SEEN_KEY = "hagah_bible_seen_tutorial";
+const READING_PREFS_KEY = "hagah_bible_reading_prefs";
+
+const serif = Platform.select({ ios: "Georgia", default: "serif" });
 
 type Phase = "books" | "chapters" | "reader";
+type Position = { bookId: string; chapter: number };
 
 export default function BibleScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const router = useRouter();
+  const params = useLocalSearchParams();
 
   const [showTutorial, setShowTutorial] = useState(false);
-  const [toast, setToast] = useState<{ text: string; visible: boolean }>({ text: "", visible: false });
+  const [toast, setToast] = useState<string | null>(null);
 
   const [phase, setPhase] = useState<Phase>("books");
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<number>(1);
   const [chapterData, setChapterData] = useState<BibleChapter | null>(null);
   const [loading, setLoading] = useState(false);
+  const [lastPosition, setLastPosition] = useState<Position | null>(null);
 
   const [selectedVerse, setSelectedVerse] = useState<string | null>(null);
   const [strongsModal, setStrongsModal] = useState<{ code: string; entry: StrongsEntry | null } | null>(null);
-  const [showFontSettings, setShowFontSettings] = useState(false);
-  const [fontSize, setFontSize] = useState<number>(18);
-  const [showStrongs, setShowStrongs] = useState<boolean>(true);
-  const router = useRouter();
-  const params = useLocalSearchParams();
+  const [showSettings, setShowSettings] = useState(false);
+  const [fontSize, setFontSizeState] = useState<number>(19);
+  const [showStrongs, setShowStrongsState] = useState<boolean>(false);
+
+  // ── reading preferences survive restarts ───────────────────────────────
+  useEffect(() => {
+    AsyncStorage.getItem(READING_PREFS_KEY)
+      .then((raw) => {
+        if (!raw) return;
+        const prefs = JSON.parse(raw);
+        if (FONT_SIZES.includes(prefs.fontSize)) setFontSizeState(prefs.fontSize);
+        if (typeof prefs.showStrongs === "boolean") setShowStrongsState(prefs.showStrongs);
+      })
+      .catch(() => { });
+  }, []);
+
+  const savePrefs = (next: { fontSize: number; showStrongs: boolean }) => {
+    AsyncStorage.setItem(READING_PREFS_KEY, JSON.stringify(next)).catch(() => { });
+  };
+  const setFontSize = (v: number) => {
+    setFontSizeState(v);
+    savePrefs({ fontSize: v, showStrongs });
+  };
+  const setShowStrongs = (v: boolean) => {
+    setShowStrongsState(v);
+    savePrefs({ fontSize, showStrongs: v });
+  };
 
   // ── restore last read position when the Bible screen receives focus ────
-  // This ensures clicking the `Bible` tab/button returns the user to their
-  // last-read book/chapter even if the component was already mounted.
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       if (params?.book) return;
       let mounted = true;
       (async () => {
@@ -70,6 +90,7 @@ export default function BibleScreen() {
         try {
           const { bookId, chapter } = JSON.parse(saved);
           if (bookId && getBookMeta(bookId)) {
+            setLastPosition({ bookId, chapter: chapter || 1 });
             setSelectedBookId(bookId);
             setSelectedChapter(chapter || 1);
           }
@@ -83,7 +104,7 @@ export default function BibleScreen() {
     }, [params?.book])
   );
 
-  // show tutorial first time only
+  // show tutorial first time only; warm common books in the background
   useEffect(() => {
     (async () => {
       const seen = await AsyncStorage.getItem(TUTORIAL_SEEN_KEY);
@@ -92,23 +113,49 @@ export default function BibleScreen() {
         await AsyncStorage.setItem(TUTORIAL_SEEN_KEY, "1");
       }
     })();
-
-    // warm common books in background after interactions so the UI is not blocked
-    // (InteractionManager was removed in React Native 0.88: wait a moment instead)
     const task = setTimeout(() => {
-      try {
-        // Prefetch a short list of high-traffic books (Psalms, Matthew, John)
-        prefetchBook("Psa");
-        prefetchBook("Mat");
-        prefetchBook("Jhn");
-      } catch { }
+      prefetchBook("Psa");
+      prefetchBook("Mat");
+      prefetchBook("Jhn");
     }, 800);
-    return () => {
-      clearTimeout(task);
-    };
+    return () => clearTimeout(task);
   }, []);
 
-  const openBook = async (bookId: string) => {
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = (text: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(text);
+    toastTimer.current = setTimeout(() => setToast(null), 1600);
+  };
+
+  const rememberPosition = (pos: Position) => {
+    setLastPosition(pos);
+    AsyncStorage.setItem(LAST_POSITION_KEY, JSON.stringify(pos)).catch(() => { });
+  };
+
+  const loadChapter = async (bookId: string, chapter: number, verse?: string) => {
+    setSelectedBookId(bookId);
+    setSelectedChapter(chapter);
+    setSelectedVerse(null);
+    setChapterData(null);
+    setPhase("reader");
+    setLoading(true);
+    try {
+      const data = await getChapterFromDb(bookId, chapter);
+      setChapterData(data);
+      if (verse) setSelectedVerse(verse);
+      const meta = getBookMeta(bookId);
+      if (meta && chapter < meta.chapters) prefetchChapter(bookId, chapter + 1);
+      rememberPosition({ bookId, chapter });
+    } catch {
+      showToast("Couldn't open that chapter. Please try again.");
+      setPhase("chapters");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openBook = (bookId: string) => {
     setSelectedBookId(bookId);
     setChapterData(null);
     setSelectedVerse(null);
@@ -116,150 +163,112 @@ export default function BibleScreen() {
     prefetchChapter(bookId, 1);
   };
 
-  const openChapter = React.useCallback(async (chapter: number) => {
-    if (!selectedBookId) return;
-    setSelectedChapter(chapter);
-    setSelectedVerse(null);
-    setPhase("reader");
-    setLoading(true);
-    try {
-      console.log("[DEBUG] openChapter called", { selectedBookId, chapter });
-      const data = await getChapterFromDb(selectedBookId, chapter);
-      console.log("[DEBUG] getChapterFromDb returned chapter keys", Object.keys(data).length);
-      setChapterData(data);
-      const nextChapter = chapter + 1;
-      const meta = getBookMeta(selectedBookId);
-      if (meta && nextChapter <= meta.chapters) {
-        prefetchChapter(selectedBookId, nextChapter);
-      }
-      AsyncStorage.setItem(
-        LAST_POSITION_KEY,
-        JSON.stringify({ bookId: selectedBookId, chapter }),
-      ).catch(() => { });
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedBookId]);
+  const openChapter = (chapter: number) => {
+    if (selectedBookId) loadChapter(selectedBookId, chapter);
+  };
 
-  // jump straight into reader if we restored a saved position
+  // jump straight into the reader when a saved position was restored
   useEffect(() => {
     if (selectedBookId && phase === "books" && chapterData === null) {
-      openChapter(selectedChapter);
+      loadChapter(selectedBookId, selectedChapter);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBookId]);
 
-  // If route includes book/chapter/verse (from search), navigate there
+  // a route with book/chapter/verse (from search) opens that verse
   useEffect(() => {
     const book = params?.book as string | undefined;
-    const chapter = params?.chapter as string | undefined;
-    const verse = params?.verse as string | undefined;
     if (book && getBookMeta(book)) {
-      const chapNum = chapter ? Number(chapter) : 1;
-      // clear previous state so we don't render old chapter content while
-      // the new chapter loads (this caused mixed content previously)
-      setSelectedBookId(book);
-      setSelectedChapter(chapNum);
-      setPhase("reader");
-      setSelectedVerse(null);
-      setChapterData(null);
-      setLoading(true);
-      (async () => {
-        try {
-          const data = await getChapterFromDb(book, chapNum);
-          setChapterData(data);
-          if (verse) setSelectedVerse(String(verse));
-          AsyncStorage.setItem(LAST_POSITION_KEY, JSON.stringify({ bookId: book, chapter: chapNum })).catch(() => { });
-        } finally {
-          setLoading(false);
-        }
-      })();
+      const chapter = params?.chapter ? Number(params.chapter) : 1;
+      const verse = params?.verse ? String(params.verse) : undefined;
+      loadChapter(book, chapter, verse);
     }
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params?.book, params?.chapter, params?.verse]);
 
   const currentBookMeta = selectedBookId ? getBookMeta(selectedBookId) : undefined;
 
-  const goPrevChapter = React.useCallback(() => {
-    if (selectedChapter > 1) openChapter(selectedChapter - 1);
-  }, [selectedChapter, openChapter]);
-  const goNextChapter = React.useCallback(() => {
-    if (currentBookMeta && selectedChapter < currentBookMeta.chapters) {
-      openChapter(selectedChapter + 1);
+  const goPrevChapter = () => {
+    if (selectedBookId && selectedChapter > 1) loadChapter(selectedBookId, selectedChapter - 1);
+  };
+  const goNextChapter = () => {
+    if (selectedBookId && currentBookMeta && selectedChapter < currentBookMeta.chapters) {
+      loadChapter(selectedBookId, selectedChapter + 1);
     }
-  }, [selectedChapter, currentBookMeta, openChapter]);
-
-  const panResponderRef = useRef<any>(null);
-
-  React.useEffect(() => {
-    if (panResponderRef.current) return;
-    panResponderRef.current = PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_evt: any, g: any) => Math.abs(g.dx) > Math.abs(g.dy) && Math.abs(g.dx) > 10,
-      onPanResponderRelease: (_evt: any, g: any) => {
-        const verseThreshold = 40;
-        try {
-          if (!chapterData) return;
-          const list = Object.keys(chapterData).sort((a, b) => Number(a) - Number(b));
-          const idx = selectedVerse ? list.indexOf(selectedVerse) : -1;
-          if (g.dx < -verseThreshold) {
-            // left swipe -> previous
-            if (idx > 0) setSelectedVerse(list[idx - 1]); else goPrevChapter();
-          } else if (g.dx > verseThreshold) {
-            // right swipe -> next
-            if (idx >= 0 && idx < list.length - 1) setSelectedVerse(list[idx + 1]); else goNextChapter();
-          }
-        } catch {
-          // ignore
-        }
-      },
-    });
-  }, [chapterData, selectedVerse, goPrevChapter, goNextChapter]);
-
-  const memoHandleWordPress = React.useCallback((code: string) => {
-    const entry = lookupStrongs(code) ?? null;
-    setStrongsModal({ code, entry });
-  }, []);
-
-  const showToast = (text: string) => {
-    setToast({ text, visible: true });
-    setTimeout(() => setToast({ text: "", visible: false }), 1500);
   };
 
+  // Swipe between chapters. The responder is created once, so it reads the
+  // latest navigation functions from a ref instead of a stale closure.
+  const swipeRef = useRef({ prev: () => { }, next: () => { } });
+  useEffect(() => {
+    swipeRef.current = { prev: goPrevChapter, next: goNextChapter };
+  });
+  // The handlers only read the ref when a gesture ends, never during render.
+  // eslint-disable-next-line react-hooks/refs
+  const [swipe] = useState(() =>
+    PanResponder.create({
+      onMoveShouldSetPanResponderCapture: (_e, g) => Math.abs(g.dx) > 24 && Math.abs(g.dx) > Math.abs(g.dy) * 2,
+      onPanResponderRelease: (_e, g) => {
+        if (g.dx < -60) swipeRef.current.next();
+        else if (g.dx > 60) swipeRef.current.prev();
+      },
+      onPanResponderTerminationRequest: () => true,
+    })
+  );
+
   const verseRef = (vNum: string) => `${currentBookMeta?.name} ${selectedChapter}:${vNum}`;
+  const verseText = (vNum: string) => plainVerseText(chapterData?.[vNum]?.text ?? "");
 
+  const copyVerse = async (vNum: string) => {
+    await Clipboard.setStringAsync(`"${verseText(vNum)}" — ${verseRef(vNum)} (KJV)`);
+    showToast("Verse copied");
+  };
 
+  const shareVerse = (vNum: string) => {
+    Share.share({ message: `"${verseText(vNum)}" — ${verseRef(vNum)} (KJV)` }).catch(() => { });
+  };
 
-  const copyVerse = React.useCallback(async (vNum: string) => {
-    const ref = `${currentBookMeta?.name} ${selectedChapter}:${vNum}`;
-    const text = chapterData ? (chapterData[vNum]?.words || []).map((w) => w.t).join(" ") : "";
-    await Clipboard.setStringAsync(`${ref} ${text}`);
-    setToast({ text: "Verse copied", visible: true });
-    setTimeout(() => setToast({ text: "", visible: false }), 1500);
-  }, [chapterData, currentBookMeta, selectedChapter]);
+  const handleWordPress = useCallback((code: string) => {
+    setStrongsModal({ code, entry: lookupStrongs(code) ?? null });
+  }, []);
 
-  const memoHandleVerseTap = React.useCallback((vNum: string) => {
+  const handleVerseTap = useCallback((vNum: string) => {
     setSelectedVerse((prev) => (prev === vNum ? null : vNum));
   }, []);
 
-  const memoHandleVerseLongPress = React.useCallback((vNum: string) => {
-    setSelectedVerse(null);
-    copyVerse(vNum);
-  }, [copyVerse]);
+  const longPressRef = useRef<(v: string) => void>(() => { });
+  useEffect(() => {
+    longPressRef.current = (vNum: string) => {
+      setSelectedVerse(null);
+      copyVerse(vNum);
+    };
+  });
+  const handleVerseLongPress = useCallback((vNum: string) => longPressRef.current(vNum), []);
 
   const copyStrongsEntry = async () => {
-    if (!strongsModal) return;
-    const { code, entry } = strongsModal;
-    if (!entry) return;
+    const entry = strongsModal?.entry;
+    if (!strongsModal || !entry) return;
     const parts = [
-      entry.lemma ? entry.lemma : "",
+      entry.lemma ?? "",
       entry.xlit ? `(${entry.xlit}${entry.pron ? `, ${entry.pron}` : ""})` : "",
-      code,
+      strongsModal.code,
       entry.def ? `— ${entry.def}` : "",
     ].filter(Boolean);
     await Clipboard.setStringAsync(parts.join(" "));
     showToast("Word copied");
   };
+
+  const iconBtn = (icon: keyof typeof Ionicons.glyphMap, onPress: () => void, label: string) => (
+    <TouchableOpacity onPress={onPress} hitSlop={10} style={styles.iconBtn} accessibilityLabel={label}>
+      <Ionicons name={icon} size={19} color={theme.colors.accent} />
+    </TouchableOpacity>
+  );
+
+  const toastView = toast && (
+    <View style={styles.toast} pointerEvents="none">
+      <Text style={styles.toastText}>{toast}</Text>
+    </View>
+  );
 
   // ── BOOKS ────────────────────────────────────────────────────────────────
   if (phase === "books") {
@@ -268,25 +277,26 @@ export default function BibleScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.eyebrow}>SCRIPTURE</Text>
-            <Text style={styles.title}>Bible</Text>
+            <Text style={styles.title}>The Holy Bible</Text>
           </View>
           <View style={styles.headerBadgeRow}>
-            <TouchableOpacity onPress={() => setShowTutorial(true)} hitSlop={10} style={styles.helpBtn}>
-              <Ionicons name="help-circle-outline" size={22} color={theme.colors.accent} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/home/search')} hitSlop={10} style={styles.helpBtn}>
-              <Ionicons name="search" size={20} color={theme.colors.accent} />
-            </TouchableOpacity>
-            <View style={styles.headerBadge}>
-              <Ionicons name="book" size={20} color={theme.colors.accent} />
-            </View>
+            {iconBtn("help-circle-outline", () => setShowTutorial(true), "How to use the reader")}
+            {iconBtn("search", () => router.push("/home/search"), "Search the Bible")}
           </View>
         </View>
 
-        <BooksGrid books={bibleBooks} openBook={openBook} prefetchBook={prefetchBook} styles={styles} />
+        <BooksGrid
+          openBook={openBook}
+          prefetchBook={prefetchBook}
+          lastPosition={lastPosition}
+          onContinue={() => lastPosition && loadChapter(lastPosition.bookId, lastPosition.chapter)}
+          styles={styles}
+          theme={theme}
+        />
 
         <Navbar />
         <TutorialModal visible={showTutorial} onClose={() => setShowTutorial(false)} styles={styles} />
+        {toastView}
       </SafeAreaView>
     );
   }
@@ -301,15 +311,7 @@ export default function BibleScreen() {
             <Text style={styles.backText}>Books</Text>
           </TouchableOpacity>
           <View style={styles.headerBadgeRow}>
-            <TouchableOpacity onPress={() => setShowTutorial(true)} hitSlop={10}>
-              <Ionicons name="help-circle-outline" size={22} color={theme.colors.accent} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/home/search')} hitSlop={10} style={{ marginLeft: 8 }}>
-              <Ionicons name="search" size={20} color={theme.colors.accent} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowStrongs((s) => !s)} hitSlop={10} style={{ marginLeft: 8 }}>
-              <Text style={{ color: showStrongs ? theme.colors.accent : theme.colors.textDisabled, fontWeight: "800" }}>S</Text>
-            </TouchableOpacity>
+            {iconBtn("search", () => router.push("/home/search"), "Search the Bible")}
           </View>
         </View>
 
@@ -317,12 +319,12 @@ export default function BibleScreen() {
           currentBookMeta={currentBookMeta}
           openChapter={openChapter}
           prefetchChapter={prefetchChapter}
-          selectedBookId={selectedBookId}
+          lastChapter={lastPosition?.bookId === currentBookMeta.id ? lastPosition.chapter : null}
           styles={styles}
         />
 
         <Navbar />
-        <TutorialModal visible={showTutorial} onClose={() => setShowTutorial(false)} styles={styles} />
+        {toastView}
       </SafeAreaView>
     );
   }
@@ -337,34 +339,22 @@ export default function BibleScreen() {
       <View style={styles.header}>
         <TouchableOpacity onPress={() => setPhase("chapters")} hitSlop={12} style={styles.backRow}>
           <Ionicons name="chevron-back" size={18} color={theme.colors.accent} />
-          <Text style={styles.backText}>Chapters</Text>
+          <Text style={styles.backText} numberOfLines={1}>{currentBookMeta?.name ?? "Chapters"}</Text>
         </TouchableOpacity>
         <View style={styles.headerBadgeRow}>
-          <TouchableOpacity onPress={() => setShowTutorial(true)} hitSlop={10}>
-            <Ionicons name="help-circle-outline" size={22} color={theme.colors.accent} />
+          {iconBtn("search", () => router.push("/home/search"), "Search the Bible")}
+          <TouchableOpacity onPress={() => setShowSettings(true)} hitSlop={10} style={styles.iconBtn} accessibilityLabel="Reading settings">
+            <Text style={styles.aaText}>Aa</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/home/search')} hitSlop={10} style={{ marginLeft: 8 }}>
-            <Ionicons name="search" size={20} color={theme.colors.accent} />
-          </TouchableOpacity>
-          {phase === "reader" && (
-            <>
-              <TouchableOpacity onPress={() => setShowFontSettings(true)} hitSlop={10} style={{ marginLeft: 8 }}>
-                <Ionicons name="settings" size={20} color={theme.colors.accent} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setShowStrongs((s) => !s)} hitSlop={10} style={{ marginLeft: 8 }}>
-                <Text style={{ color: showStrongs ? theme.colors.accent : theme.colors.textDisabled, fontWeight: "800" }}>S</Text>
-              </TouchableOpacity>
-            </>
-          )}
         </View>
       </View>
 
       {loading || !chapterData ? (
         <View style={styles.loadingBox}>
-          {/* Non-blocking skeleton placeholders to avoid intrusive spinner */}
-          <View style={{ width: "60%", height: 18, backgroundColor: theme.colors.bgSurface, borderRadius: 8, marginBottom: 12 }} />
-          {Array.from({ length: 6 }).map((_, i) => (
-            <View key={i} style={{ width: "100%", height: 18, backgroundColor: theme.colors.bgSurface, borderRadius: 6, marginBottom: 10, opacity: 0.9 - i * 0.06 }} />
+          <View style={[styles.skeleton, { width: "30%", height: 14, alignSelf: "center" }]} />
+          <View style={[styles.skeleton, { width: 56, height: 56, alignSelf: "center", marginBottom: 32 }]} />
+          {Array.from({ length: 7 }).map((_, i) => (
+            <View key={i} style={[styles.skeleton, { width: i % 3 === 2 ? "70%" : "100%", opacity: 0.9 - i * 0.08 }]} />
           ))}
         </View>
       ) : (
@@ -375,11 +365,11 @@ export default function BibleScreen() {
           selectedChapter={selectedChapter}
           goPrevChapter={goPrevChapter}
           goNextChapter={goNextChapter}
-          panHandlers={panResponderRef.current?.panHandlers}
+          panHandlers={swipe.panHandlers}
           selectedVerse={selectedVerse}
-          handleWordPress={memoHandleWordPress}
-          handleVerseTap={memoHandleVerseTap}
-          handleVerseLongPress={memoHandleVerseLongPress}
+          handleWordPress={handleWordPress}
+          handleVerseTap={handleVerseTap}
+          handleVerseLongPress={handleVerseLongPress}
           styles={styles}
           theme={theme}
           fontSize={fontSize}
@@ -387,10 +377,6 @@ export default function BibleScreen() {
         />
       )}
 
-      {/* create pan responder once we know chapterData and verseNumbers */}
-
-
-      {/* Floating copy bar when a verse is selected */}
       {selectedVerse && (
         <SelectionBar
           selectionRef={verseRef(selectedVerse)}
@@ -398,6 +384,7 @@ export default function BibleScreen() {
             copyVerse(selectedVerse);
             setSelectedVerse(null);
           }}
+          onShare={() => shareVerse(selectedVerse)}
           onClose={() => setSelectedVerse(null)}
           styles={styles}
           theme={theme}
@@ -413,33 +400,27 @@ export default function BibleScreen() {
         theme={theme}
       />
 
-      {/* Search handled by routed page: /home/bible/search */}
-
-      <FontSettingsModal
-        visible={showFontSettings}
-        onClose={() => setShowFontSettings(false)}
+      <ReadingSettingsModal
+        visible={showSettings}
+        onClose={() => setShowSettings(false)}
         fontSize={fontSize}
-        setFontSize={(v: number) => setFontSize(v)}
+        setFontSize={setFontSize}
+        showStrongs={showStrongs}
+        setShowStrongs={setShowStrongs}
+        onShowHelp={() => setShowTutorial(true)}
         styles={styles}
         theme={theme}
       />
 
       <TutorialModal visible={showTutorial} onClose={() => setShowTutorial(false)} styles={styles} />
-
-      {/* Toast */}
-      {toast.visible && (
-        <View style={styles.toast} pointerEvents="none">
-          <Text style={styles.toastText}>{toast.text}</Text>
-        </View>
-      )}
+      {toastView}
     </SafeAreaView>
   );
 }
 
-// TutorialModal extracted to ./bible/TutorialModal.tsx
-
 function createStyles(theme: Theme) {
   const c = theme.colors;
+  const dark = theme.scheme === "dark";
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: c.bgBase },
 
@@ -452,123 +433,128 @@ function createStyles(theme: Theme) {
       alignItems: "center",
     },
     eyebrow: { color: c.accent, fontSize: 11, fontWeight: "700", letterSpacing: 2.6 },
-    title: { color: c.textPrimary, fontSize: 24, fontWeight: "800" },
-    headerBadge: {
-      width: 40, height: 40, borderRadius: 20,
-      backgroundColor: c.tint,
+    title: { fontFamily: serif, color: c.textPrimary, fontSize: 26, fontWeight: "700", marginTop: 2 },
+    headerBadgeRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    iconBtn: {
+      width: 38, height: 38, borderRadius: 19,
       alignItems: "center", justifyContent: "center",
-      borderWidth: 1, borderColor: c.border,
+      backgroundColor: c.tint, borderWidth: 1, borderColor: c.border,
     },
-    headerBadgeRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-    helpBtn: {},
-    backRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-    backText: { color: c.accent, fontSize: 14, fontWeight: "700" },
+    aaText: { fontFamily: serif, color: c.accent, fontSize: 16, fontWeight: "700" },
+    backRow: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1, marginRight: 12 },
+    backText: { color: c.accent, fontSize: 15, fontWeight: "700" },
 
-    scrollContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 20 },
+    scrollContent: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 20 },
 
-    groupLabel: {
-      color: c.textFaint,
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 2,
-      marginTop: 16,
-      marginBottom: 10,
-      paddingHorizontal: 4,
-    },
-    bookCardGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "space-between" },
-    bookCard: {
-      width: "48%",
-      backgroundColor: c.bgElevated,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: c.border,
-      padding: 12,
-      marginBottom: 8,
+    // ── Books ──
+    continueCard: {
       flexDirection: "row",
       alignItems: "center",
-      shadowColor: "#000",
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 3,
+      backgroundColor: c.bgElevated,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      paddingVertical: 16,
+      paddingHorizontal: 18,
+      marginBottom: 18,
     },
-    bookCardLeft: { width: 56, height: 56, borderRadius: 10, backgroundColor: c.bgSurface, alignItems: "center", justifyContent: "center", marginRight: 12 },
-    bookCardAbbrev: { color: c.textSecondary, fontSize: 14, fontWeight: "800" },
-    bookCardRight: { flex: 1 },
-    bookCardName: { color: c.textPrimary, fontSize: 15, fontWeight: "800" },
-    bookCardMeta: { color: c.textFaint, fontSize: 11, marginTop: 4 },
+    continueEyebrow: { color: c.gold, fontSize: 10, fontWeight: "800", letterSpacing: 2 },
+    continueTitle: { fontFamily: serif, color: c.textPrimary, fontSize: 22, marginTop: 4 },
+    continueArrow: {
+      width: 40, height: 40, borderRadius: 20,
+      backgroundColor: c.accent, alignItems: "center", justifyContent: "center",
+    },
+    segment: {
+      flexDirection: "row",
+      backgroundColor: c.bgSunken,
+      borderRadius: 12,
+      padding: 4,
+      marginBottom: 6,
+    },
+    segmentItem: { flex: 1, paddingVertical: 9, borderRadius: 9, alignItems: "center" },
+    segmentItemActive: {
+      backgroundColor: c.bgElevated,
+      shadowColor: "#000",
+      shadowOpacity: dark ? 0 : 0.06,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: dark ? 0 : 1,
+    },
+    segmentText: { color: c.textMuted, fontSize: 13, fontWeight: "600" },
+    segmentTextActive: { color: c.textPrimary, fontWeight: "700" },
+    section: { marginTop: 22 },
+    sectionHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
+    sectionTitle: { color: c.accent, fontSize: 11, fontWeight: "800", letterSpacing: 2, textTransform: "uppercase" },
+    sectionRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: c.border },
+    bookGrid: { flexDirection: "row", flexWrap: "wrap" },
+    bookCell: {
+      width: "50%",
+      paddingVertical: 12,
+      paddingRight: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.borderSubtle,
+    },
+    bookName: { fontFamily: serif, color: c.textPrimary, fontSize: 17 },
+    bookMeta: { color: c.textFaint, fontSize: 11, marginTop: 3 },
 
-    bookTitle: { color: c.textPrimary, fontSize: 26, fontWeight: "800", marginTop: 8 },
-    chapterGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    // ── Chapters ──
+    bookTitle: { fontFamily: serif, color: c.textPrimary, fontSize: 34, fontWeight: "700", marginTop: 4 },
+    bookSubtitle: { color: c.textFaint, fontSize: 12, marginTop: 4, marginBottom: 20, letterSpacing: 0.3 },
+    chapterGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
     chapterChip: {
-      width: 48,
-      height: 48,
-      borderRadius: 10,
-      backgroundColor: c.bgSurface,
+      width: 54,
+      height: 54,
+      borderRadius: 27,
+      backgroundColor: c.bgElevated,
       borderWidth: 1,
       borderColor: c.borderSubtle,
       alignItems: "center",
       justifyContent: "center",
     },
-    chapterChipText: { color: c.textPrimary, fontSize: 14, fontWeight: "700" },
+    chapterChipActive: { backgroundColor: c.accent, borderColor: c.accent },
+    chapterChipText: { fontFamily: serif, color: c.textPrimary, fontSize: 17 },
+    chapterChipTextActive: { color: c.onAccent, fontWeight: "700" },
 
-    loadingBox: { flex: 1, alignItems: "center", justifyContent: "center" },
+    // ── Reader ──
+    loadingBox: { flex: 1, paddingHorizontal: 26, paddingTop: 24 },
+    skeleton: { height: 16, backgroundColor: c.bgSunken, borderRadius: 6, marginBottom: 14 },
 
-    readerContent: { paddingHorizontal: 24, paddingTop: 10, paddingBottom: 20 },
+    readerContent: { paddingHorizontal: 26, paddingTop: 8, paddingBottom: 20 },
 
-    // ── Hero (YouVersion-style centered header) ──
-    hero: { alignItems: "center", marginBottom: 28, marginTop: 6 },
-    heroBook: {
-      color: c.textSecondary,
-      fontSize: 15,
-      fontWeight: "600",
-      letterSpacing: 1,
-      marginBottom: 2,
+    hero: { alignItems: "center", marginBottom: 30, marginTop: 8 },
+    heroBook: { color: c.textMuted, fontSize: 12, fontWeight: "700", letterSpacing: 3.2 },
+    heroChapter: { fontFamily: serif, color: c.textPrimary, fontSize: 72, lineHeight: 84, marginTop: 2 },
+    heroOrnament: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 },
+    heroRule: { width: 28, height: StyleSheet.hairlineWidth, backgroundColor: c.gold },
+    heroVersion: { color: c.gold, fontSize: 9, fontWeight: "700", letterSpacing: 2 },
+
+    psalmTitle: {
+      fontFamily: serif,
+      fontStyle: "italic",
+      color: c.textMuted,
+      textAlign: "center",
+      marginBottom: 16,
+      lineHeight: 24,
     },
-    heroChapter: {
-      color: c.textPrimary,
-      fontSize: 64,
-      fontWeight: "800",
-      lineHeight: 68,
-    },
-    heroBadge: {
-      marginTop: 10,
-      paddingHorizontal: 10,
-      paddingVertical: 3,
-      borderRadius: 20,
-      backgroundColor: c.tint,
-      borderWidth: 1,
-      borderColor: c.border,
-    },
-    heroBadgeText: { color: c.accent, fontSize: 10, fontWeight: "800", letterSpacing: 1.4 },
-
-    paragraphWrap: {},
     verseBlock: {
+      fontFamily: serif,
       color: c.textPrimary,
-      fontSize: 18,
-      lineHeight: 32,
-      marginBottom: 18, // ← breathing room between verses
+      marginBottom: 14,
+      borderRadius: 6,
     },
-    verseNumSuper: {
+    verseSelected: {
+      backgroundColor: dark ? "rgba(140,207,184,0.14)" : "rgba(47,93,80,0.10)",
+    },
+    verseNum: {
+      fontFamily: Platform.select({ ios: "System", default: "sans-serif" }),
       color: c.accent,
-      fontSize: 11,
-      fontWeight: "800",
-      lineHeight: 32,
-    },
-    wordUnderline: {
-      textDecorationLine: "underline",
-      textDecorationColor: c.borderSubtle,
-    },
-    strongsWord: {
-      textDecorationLine: "underline",
-      textDecorationColor: c.accent,
-      textDecorationStyle: "solid",
-      color: c.textPrimary,
-      fontWeight: "600",
+      fontWeight: "700",
     },
     italicWord: { fontStyle: "italic", color: c.textMuted },
-    selectedWord: {
-      backgroundColor: "rgba(143, 191, 143, 0.28)",
+    strongsWord: {
+      textDecorationLine: "underline",
+      textDecorationStyle: "dotted",
+      textDecorationColor: c.accent,
     },
 
     navRow: {
@@ -580,21 +566,30 @@ function createStyles(theme: Theme) {
     navBtn: {
       flexDirection: "row", alignItems: "center", gap: 4,
       paddingHorizontal: 14, paddingVertical: 10,
-      borderRadius: 10, backgroundColor: c.tint,
+      borderRadius: 999, backgroundColor: c.tint,
       borderWidth: 1, borderColor: c.border,
     },
-    navBtnDisabled: { opacity: 0.3 },
+    navBtnDisabled: { opacity: 0 },
     navBtnText: { color: c.accent, fontSize: 13, fontWeight: "700" },
-    navBtnTextDisabled: { color: c.textDisabled },
 
-    tapHint: {
-      color: c.textFaint,
-      fontSize: 11,
-      fontStyle: "italic",
-      textAlign: "center",
-      marginTop: 20,
-      lineHeight: 16,
+    listenBtn: {
+      position: "absolute",
+      right: 18,
+      bottom: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 999,
+      backgroundColor: c.accent,
+      shadowColor: "#000",
+      shadowOpacity: 0.18,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 6,
     },
+    listenText: { color: c.onAccent, fontWeight: "700", fontSize: 14 },
 
     // ── Floating selection bar ──
     selectionBar: {
@@ -612,16 +607,17 @@ function createStyles(theme: Theme) {
       alignItems: "center",
       justifyContent: "space-between",
       shadowColor: "#000",
-      shadowOpacity: 0.3,
+      shadowOpacity: 0.2,
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 4 },
-      elevation: 6,
+      elevation: 8,
     },
-    selectionRef: { color: c.textSecondary, fontSize: 12, fontWeight: "700", flex: 1, marginRight: 8 },
-    selectionActions: { flexDirection: "row", alignItems: "center", gap: 14 },
+    selectionRef: { fontFamily: serif, color: c.textPrimary, fontSize: 15, flex: 1, marginRight: 8 },
+    selectionActions: { flexDirection: "row", alignItems: "center", gap: 16 },
     selectionBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
     selectionBtnText: { color: c.accent, fontSize: 13, fontWeight: "700" },
 
+    // ── Modals ──
     modalOverlay: {
       flex: 1,
       backgroundColor: c.overlay,
@@ -639,15 +635,10 @@ function createStyles(theme: Theme) {
       borderColor: c.border,
       gap: 4,
     },
-    strongsHeaderRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-      marginBottom: 8,
-    },
+    strongsHeaderRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
     strongsCode: { color: c.accent, fontSize: 16, fontWeight: "800", flex: 1 },
     strongsLang: { color: c.textFaint, fontSize: 11, fontWeight: "700", letterSpacing: 1 },
-    strongsLemma: { color: c.textPrimary, fontSize: 24, marginBottom: 2 },
+    strongsLemma: { fontFamily: serif, color: c.textPrimary, fontSize: 28, marginBottom: 2 },
     strongsXlit: { color: c.textSecondary, fontSize: 13, fontStyle: "italic", marginBottom: 10 },
     strongsSectionLabel: {
       color: c.textFaint,
@@ -657,27 +648,59 @@ function createStyles(theme: Theme) {
       marginTop: 10,
       marginBottom: 4,
     },
-    strongsBody: { color: c.textPrimary, fontSize: 13, lineHeight: 20 },
+    strongsBody: { color: c.textPrimary, fontSize: 14, lineHeight: 21 },
+
+    settingsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
+    settingsTitle: { fontFamily: serif, color: c.textPrimary, fontSize: 22, fontWeight: "700" },
+    settingsPreview: {
+      fontFamily: serif,
+      color: c.textPrimary,
+      backgroundColor: c.bgBase,
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 8,
+    },
+    settingsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.borderSubtle,
+    },
+    settingsLabel: { color: c.textPrimary, fontSize: 15, fontWeight: "600" },
+    settingsHint: { color: c.textFaint, fontSize: 12, lineHeight: 17, marginTop: 2 },
+    stepper: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: c.border,
+      overflow: "hidden",
+    },
+    stepperBtn: { width: 48, height: 38, alignItems: "center", justifyContent: "center" },
+    stepperDivider: { width: StyleSheet.hairlineWidth, height: 22, backgroundColor: c.border },
+    stepperGlyph: { fontFamily: serif, color: c.accent, fontWeight: "700" },
 
     tutorialCard: {
       width: "100%",
       maxWidth: 520,
       backgroundColor: c.bgElevated,
       borderRadius: 18,
-      padding: 20,
+      padding: 22,
       borderWidth: 1,
       borderColor: c.border,
       alignItems: "flex-start",
       gap: 14,
     },
-    tutorialRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-    tutorialText: { color: c.textPrimary, fontSize: 13, lineHeight: 19, flex: 1 },
+    tutorialRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+    tutorialText: { color: c.textPrimary, fontSize: 14, lineHeight: 20, flex: 1 },
     tutorialClose: {
       marginTop: 4,
       alignSelf: "flex-end",
       padding: 8,
-      paddingHorizontal: 14,
-      borderRadius: 8,
+      paddingHorizontal: 16,
+      borderRadius: 999,
       backgroundColor: c.tint,
       borderWidth: 1,
       borderColor: c.border,
@@ -685,15 +708,13 @@ function createStyles(theme: Theme) {
 
     toast: {
       position: "absolute",
-      bottom: 90,
+      bottom: 150,
       alignSelf: "center",
-      backgroundColor: c.bgElevated,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: c.border,
+      backgroundColor: c.textPrimary,
+      paddingHorizontal: 16,
+      paddingVertical: 9,
+      borderRadius: 999,
     },
-    toastText: { color: c.textPrimary, fontSize: 13 },
+    toastText: { color: c.bgBase, fontSize: 13, fontWeight: "600" },
   });
 }

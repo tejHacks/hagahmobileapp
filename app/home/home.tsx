@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { captureRef } from "react-native-view-shot";
-import { Theme, useTheme } from "../../components/themes/theme";
+import { Theme, fonts, useTheme } from "../../components/themes/theme";
 import Navbar from "../../components/ui/Navbar";
 import ShareCard from "../../components/ui/ShareCard";
 import StreakCard from "../../components/ui/StreakCard";
@@ -433,8 +433,10 @@ export default function HomeScreen() {
         {/* HEADER */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.brand}>HAGAH</Text>
             <Text style={styles.brandSub}>SPEAK THE WORD</Text>
+            <Text style={styles.brand}>
+              Hagah <Text style={styles.brandHebrew}>הגה</Text>
+            </Text>
           </View>
 
           <TouchableOpacity
@@ -756,7 +758,7 @@ export default function HomeScreen() {
           />
         </View>
 
-        <View style={{ height: 120 }} />
+        <View style={{ height: 150 }} />
       </ScrollView>
 
       {/* CAPTION COPIED TOAST — confirms the share text rode along with
@@ -816,10 +818,11 @@ function createStyles(theme: Theme) {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: 34,
+      marginBottom: 26,
     },
-    brand: { fontSize: 17, fontWeight: "800", letterSpacing: 5, color: c.accent },
-    brandSub: { marginTop: 5, fontSize: 8, fontWeight: "700", letterSpacing: 2.4, color: c.textFaint },
+    brand: { fontFamily: fonts.serif, fontSize: 24, fontWeight: "700", letterSpacing: 0.5, color: c.textPrimary },
+    brandHebrew: { fontSize: 18, fontWeight: "400", color: c.gold },
+    brandSub: { marginBottom: 2, fontSize: 9, fontWeight: "700", letterSpacing: 2.6, color: c.accent },
     headerButton: {
       width: 42, height: 42, borderRadius: 21,
       alignItems: "center", justifyContent: "center",
@@ -839,11 +842,12 @@ function createStyles(theme: Theme) {
 
     scriptureSection: { paddingVertical: 8, marginBottom: 34 },
     ornament: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 18 },
-    ornamentLine: { width: 44, height: 1, backgroundColor: c.border },
-    ornamentMark: { fontSize: 14, color: c.accent },
+    ornamentLine: { width: 44, height: StyleSheet.hairlineWidth, backgroundColor: c.gold, opacity: 0.6 },
+    ornamentMark: { fontSize: 14, color: c.gold },
     scriptureText: {
-      fontSize: 28, lineHeight: 38, color: c.textPrimary,
-      fontWeight: "500", textAlign: "center", letterSpacing: -0.4,
+      fontFamily: fonts.serif,
+      fontSize: 27, lineHeight: 40, color: c.textPrimary,
+      textAlign: "center",
     },
 
     declarationSection: {
@@ -852,8 +856,8 @@ function createStyles(theme: Theme) {
     },
     sectionEyebrow: { fontSize: 9, fontWeight: "800", letterSpacing: 2.6, color: c.accent, marginBottom: 14 },
     declarationText: {
-      fontSize: 20, lineHeight: 31, color: c.textSecondary,
-      fontWeight: "500", letterSpacing: -0.15,
+      fontSize: 19, lineHeight: 30, color: c.textSecondary,
+      fontWeight: "500", letterSpacing: -0.1,
     },
 
     meditationSection: { alignItems: "center", marginTop: 28 },
@@ -909,7 +913,7 @@ function createStyles(theme: Theme) {
     },
     modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     modalEyebrow: { fontSize: 8, fontWeight: "800", letterSpacing: 2.3, color: c.accent, marginBottom: 5 },
-    modalTitle: { color: c.textPrimary, fontSize: 21, fontWeight: "700" },
+    modalTitle: { fontFamily: fonts.serif, color: c.textPrimary, fontSize: 23, fontWeight: "700" },
     modalClose: {
       width: 38, height: 38, borderRadius: 19,
       alignItems: "center", justifyContent: "center", backgroundColor: c.bgSurface,

@@ -303,3 +303,51 @@ export async function searchAll(
     };
   });
 }
+// ---------------------------------------------------------------------------
+// Psalm titles
+// ---------------------------------------------------------------------------
+// The KJV source marks a psalm's title ("A Psalm of David.") as [[...]] at the
+// start of verse 1. These helpers lift it out so it can be shown as a heading.
+
+/** Splits a verse's words into its psalm title (if any) and the verse body. */
+export function splitVerseTitle(words: BibleWord[]): { title: string | null; body: BibleWord[] } {
+  if (!words.length || !words[0].t.startsWith("[[")) return { title: null, body: words };
+  const end = words.findIndex((w) => w.t.includes("]]"));
+  if (end === -1) return { title: null, body: words };
+  const title = words
+    .slice(0, end + 1)
+    .map((w) => w.t)
+    .join(" ")
+    .replace(/\[\[|\]\]/g, "")
+    .trim();
+  return { title: title || null, body: words.slice(end + 1) };
+}
+
+/** Verse text without the psalm-title markup, for copying, sharing and search results. */
+export function plainVerseText(text: string): string {
+  return text.replace(/\[\[.*?\]\]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// ---------------------------------------------------------------------------
+// Sections of the canon, for the book list
+// ---------------------------------------------------------------------------
+
+export type BibleSection = { title: string; testament: "ot" | "nt"; books: BibleBookMeta[] };
+
+const SECTION_RANGES: { title: string; testament: "ot" | "nt"; from: string; to: string }[] = [
+  { title: "The Law", testament: "ot", from: "Gen", to: "Deu" },
+  { title: "History", testament: "ot", from: "Jos", to: "Est" },
+  { title: "Poetry & Wisdom", testament: "ot", from: "Job", to: "Sng" },
+  { title: "Major Prophets", testament: "ot", from: "Isa", to: "Dan" },
+  { title: "Minor Prophets", testament: "ot", from: "Hos", to: "Mal" },
+  { title: "Gospels & Acts", testament: "nt", from: "Mat", to: "Act" },
+  { title: "Letters of Paul", testament: "nt", from: "Rom", to: "Phm" },
+  { title: "General Letters", testament: "nt", from: "Heb", to: "Jde" },
+  { title: "Prophecy", testament: "nt", from: "Rev", to: "Rev" },
+];
+
+export const bibleSections: BibleSection[] = SECTION_RANGES.map((s) => {
+  const start = bibleBooks.findIndex((b) => b.id === s.from);
+  const end = bibleBooks.findIndex((b) => b.id === s.to);
+  return { title: s.title, testament: s.testament, books: bibleBooks.slice(start, end + 1) };
+});

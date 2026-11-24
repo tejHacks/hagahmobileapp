@@ -19,7 +19,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Theme, useTheme } from "../../components/themes/theme";
+import { Theme, fonts, useTheme } from "../../components/themes/theme";
 import Navbar from "../../components/ui/Navbar";
 import { bibleBooks } from "../../data/bible";
 import { booksByIssue } from "../../data/books_war_recommended";
@@ -248,10 +248,13 @@ export default function WarScreen() {
           <Text style={styles.gateBody}>
             This is not a quiet devotional. This is a battlefield.{"\n\n"}
             Every struggle you carry — fear, lust, addiction, depression, confusion — has already been answered
-            by the Word of God. Here you will find that Word, speak it out loud, and let it do what it was sent to do.{"\n\n"}
-            &quot;So shall my word be that goeth forth out of my mouth: it shall not return unto me void, but it shall
-            accomplish that which I please.&quot; — Isaiah 55:11
+            by the Word of God. Here you will find that Word, speak it out loud, and let it do what it was sent to do.
           </Text>
+          <Text style={styles.gateQuote}>
+            “So shall my word be that goeth forth out of my mouth: it shall not return unto me void, but it shall
+            accomplish that which I please.”
+          </Text>
+          <Text style={styles.gateQuoteRef}>ISAIAH 55:11</Text>
           <View style={styles.tonguesTip}>
             <Ionicons name="flame" size={14} color={theme.colors.accent} style={{ marginRight: 6 }} />
             <Text style={styles.tonguesTipText}>
@@ -536,7 +539,7 @@ export default function WarScreen() {
 
 
 
-          <View style={{ height: 120 }} />
+          <View style={{ height: 150 }} />
         </ScrollView>
       </Animated.View>
 
@@ -557,7 +560,9 @@ function createStyles(theme: Theme) {
       alignItems: "center", justifyContent: "center", marginBottom: 22,
     },
     gateEyebrow: { color: c.accent, fontSize: 11, fontWeight: "700", letterSpacing: 2.8, marginBottom: 12 },
-    gateTitle: { color: c.textPrimary, fontSize: 36, fontWeight: "800", lineHeight: 42, marginBottom: 18 },
+    gateTitle: { fontFamily: fonts.serif, color: c.textPrimary, fontSize: 36, fontWeight: "700", lineHeight: 44, marginBottom: 18 },
+    gateQuote: { fontFamily: fonts.serif, fontStyle: "italic", color: c.textPrimary, fontSize: 17, lineHeight: 27, paddingLeft: 14, borderLeftWidth: 2, borderLeftColor: c.gold },
+    gateQuoteRef: { color: c.gold, fontSize: 10, fontWeight: "700", letterSpacing: 2, marginTop: 8, marginBottom: 22, paddingLeft: 16 },
     gateBody: { color: c.textMuted, fontSize: 14, lineHeight: 23, marginBottom: 22 },
     tonguesTip: {
       flexDirection: "row", alignItems: "flex-start",
@@ -584,7 +589,7 @@ function createStyles(theme: Theme) {
     },
     headerLeft: { gap: 2 },
     eyebrow: { color: c.accent, fontSize: 11, fontWeight: "700", letterSpacing: 2.6 },
-    title: { color: c.textPrimary, fontSize: 24, fontWeight: "800" },
+    title: { fontFamily: fonts.serif, color: c.textPrimary, fontSize: 30, fontWeight: "700", marginTop: 2 },
     headerBadge: {
       width: 40, height: 40, borderRadius: 20,
       backgroundColor: c.tint,
@@ -593,7 +598,7 @@ function createStyles(theme: Theme) {
     },
 
     scroll: { flex: 1 },
-    scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
+    scrollContent: { paddingHorizontal: 18, paddingBottom: 40 },
 
     nameTagRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
     nameTag: { color: c.textFaint, fontSize: 12, flex: 1 },
@@ -605,7 +610,7 @@ function createStyles(theme: Theme) {
       borderWidth: 1, borderColor: c.border, marginBottom: 16,
     },
     heroEyebrow: { color: c.accent, fontSize: 10, fontWeight: "700", letterSpacing: 2, marginBottom: 7 },
-    heroTitle: { color: c.textPrimary, fontSize: 19, fontWeight: "800", lineHeight: 26, marginBottom: 8 },
+    heroTitle: { fontFamily: fonts.serif, color: c.textPrimary, fontSize: 22, fontWeight: "700", lineHeight: 29, marginBottom: 8 },
     heroBody: { color: c.textMuted, lineHeight: 21, fontSize: 13, marginBottom: 10 },
     heroHintRow: { flexDirection: "row", alignItems: "flex-start", gap: 7 },
     heroHint: { color: c.textFaint, fontSize: 12, flex: 1, lineHeight: 18 },
@@ -618,7 +623,7 @@ function createStyles(theme: Theme) {
 
 
     battleIconCircleActive: { backgroundColor: c.tintActive, borderColor: c.tintActive },
-    battleTitle: { color: c.textPrimary, fontSize: 26, fontWeight: "800", textAlign: "center", marginBottom: 4 },
+    battleTitle: { fontFamily: fonts.serif, color: c.textPrimary, fontSize: 28, fontWeight: "700", textAlign: "center", marginBottom: 4 },
     battleVerse: { color: c.accent, fontSize: 12, fontWeight: "600", textAlign: "center", letterSpacing: 1, marginBottom: 14 },
     battleDivider: { height: 1, backgroundColor: c.borderSubtle, marginBottom: 14 },
     battleScriptureLabel: { color: c.textFaint, fontSize: 9, fontWeight: "700", letterSpacing: 2, marginBottom: 7 },

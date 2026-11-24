@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Navbar from "../../components/ui/Navbar";
-import { Theme, useTheme } from "../../components/themes/theme";
+import { Theme, fonts, useTheme } from "../../components/themes/theme";
 import { getBookmarks, removeBookmark, type Bookmark } from "../../utils/bookmarks";
 
 export default function PinsScreen() {
@@ -185,14 +185,15 @@ function createStyles(theme: Theme) {
         },
         eyebrow: {
             color: c.accent,
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: "700",
-            letterSpacing: 2.4,
-            marginBottom: 4,
+            letterSpacing: 2.6,
+            marginBottom: 2,
         },
         title: {
+            fontFamily: fonts.serif,
             color: c.textPrimary,
-            fontSize: 28,
+            fontSize: 30,
             fontWeight: "700",
         },
         countBadge: {
@@ -213,7 +214,7 @@ function createStyles(theme: Theme) {
         },
         scrollContent: {
             paddingHorizontal: 16,
-            paddingBottom: 120,
+            paddingBottom: 150,
         },
         loadingBox: {
             flex: 1,

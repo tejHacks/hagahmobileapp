@@ -4,9 +4,9 @@ import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Theme, useTheme } from "../../components/themes/theme";
 import { searchAll } from "../../data/bible";
-import Filters from "./bible/search/Filters";
-import SearchHeader from "./bible/search/Header";
-import ResultItem from "./bible/search/ResultItem";
+import Filters from "../../components/bible/SearchFilters";
+import SearchHeader from "../../components/bible/SearchHeader";
+import ResultItem from "../../components/bible/SearchResultItem";
 
 // Correct 27-book NT id list matching build-bible-db.js output
 // (note: Philippians is "Phl", not "Phi" — this was the source of a

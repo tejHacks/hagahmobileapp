@@ -9,7 +9,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { useColorScheme } from "react-native";
+import { Platform, useColorScheme } from "react-native";
 
 /** The user's choice. "system" follows the phone. */
 export type ThemeName = "system" | "light" | "dark";
@@ -222,3 +222,8 @@ export function useTheme(): ThemeContextValue {
   if (!ctx) throw new Error("useTheme must be used within a ThemeProvider");
   return ctx;
 }
+
+/** Type families. Scripture and titles are set in a serif, everything else in the system face. */
+export const fonts = {
+  serif: Platform.select({ ios: "Georgia", default: "serif" }) as string,
+};

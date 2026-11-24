@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Dimensions, Modal, Pressable, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { strongsLanguageLabel, type StrongsEntry } from "../../../utils/strongs";
+import { strongsLanguageLabel, type StrongsEntry } from "../../utils/strongs";
 
 export default function StrongsModal({
     strongsModal,

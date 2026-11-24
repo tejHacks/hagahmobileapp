@@ -1,6 +1,6 @@
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import { Theme } from "../../../../components/themes/theme";
+import { Theme } from "../themes/theme";
 
 export default function Filters({ scope, setScope, theme }: { scope: "all" | "ot" | "nt"; setScope: (s: "all" | "ot" | "nt") => void; theme: Theme }) {
     return (

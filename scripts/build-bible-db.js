@@ -105,10 +105,10 @@ for (const file of files) {
 console.log("\nBuilding FTS5 index...");
 db.exec(`
   CREATE VIRTUAL TABLE verses_fts USING fts5(
-    book, chapter, verse, words_json, content='verses', content_rowid='rowid'
+    book UNINDEXED, chapter UNINDEXED, verse UNINDEXED, text, content='verses', content_rowid='rowid'
   );
-  INSERT INTO verses_fts(rowid, book, chapter, verse, words_json)
-    SELECT rowid, book, chapter, verse, words_json FROM verses;
+  INSERT INTO verses_fts(rowid, book, chapter, verse, text)
+    SELECT rowid, book, chapter, verse, text FROM verses;
 `);
 
 // Restore safe defaults, then shrink and optimize the file before it ships.

@@ -340,7 +340,7 @@ export default function AboutScreen() {
           </Text>
         </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 150 }} />
       </ScrollView>
 
       <Navbar />
